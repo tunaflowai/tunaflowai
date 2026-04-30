@@ -4,9 +4,9 @@ import { renderDashboardHtml } from '../src/dashboard/dashboard.js';
 
 test('renders localhost dashboard shell', () => {
   const html = renderDashboardHtml();
-  assert.ok(html.includes('Dasbor TunaFlowAI'));
-  assert.ok(html.includes('Persona aktif'));
-  assert.ok(html.includes('Skill dan tool'));
+  assert.ok(html.includes('TunaFlowAI Dashboard'));
+  assert.ok(html.includes('Active persona'));
+  assert.ok(html.includes('Skills and tools'));
   assert.ok(html.includes('/overview'));
   assert.ok(html.includes('/chat'));
 });
