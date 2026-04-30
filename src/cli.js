@@ -9,8 +9,11 @@ const command = process.argv[2] || 'help';
 try {
   if (command === 'dev' || command === 'start' || command === 'dashboard') {
     const { config } = await startGateway();
-    console.log(`Gateway TunaFlowAI berjalan di http://${config.server.host}:${config.server.port}`);
-    console.log(`Dasbor: http://${config.server.host}:${config.server.port}/dashboard`);
+    const localUrl = displayUrl(config.server.host, config.server.port);
+    const publicUrl = codespacesUrl(config.server.port);
+    console.log(`Gateway TunaFlowAI berjalan di ${localUrl}`);
+    console.log(`Dasbor: ${localUrl}/dashboard`);
+    if (publicUrl) console.log(`Dasbor Codespaces: ${publicUrl}/dashboard`);
     console.log(`Workspace: ${config.runtime.workspace}`);
     console.log(`Direktori data: ${config.runtime.dataDir}`);
   } else if (command === 'init') {
@@ -165,6 +168,16 @@ async function initProject() {
 
 function defaultConfig() {
   return `${JSON.stringify({ runtime: { name: 'TunaFlowAI', workspace: '.', dataDir: '.tunaflow', proactive: true, verifyToolResults: true }, identity: { name: 'Tuna' }, server: { host: '127.0.0.1', port: 8787, apiTokenEnv: 'TUNAFLOW_API_TOKEN' }, models: [{ name: 'local-mock-fallback', provider: 'mock', behavior: 'ok', enabled: true }], chains: { default: ['local-mock-fallback'] } }, null, 2)}\n`;
+}
+
+function displayUrl(host, port) {
+  const shownHost = host === '0.0.0.0' || host === '::' ? '127.0.0.1' : host;
+  return `http://${shownHost}:${port}`;
+}
+
+function codespacesUrl(port) {
+  if (!process.env.CODESPACES || !process.env.CODESPACE_NAME || !process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN) return null;
+  return `https://${process.env.CODESPACE_NAME}-${port}.${process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}`;
 }
 
 function printHelp() {
