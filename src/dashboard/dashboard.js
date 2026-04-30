@@ -1,471 +1,123 @@
 export function renderDashboardHtml({ authEnabled = false } = {}) {
-  const authFlag = authEnabled ? 'true' : 'false';
+  const authBadge = authEnabled ? 'Auth enabled' : 'Local token optional';
   return `<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>TunaFlowAI Dashboard</title>
-  <style>
-    :root {
-      --tuna-950: #031821;
-      --tuna-900: #052c3a;
-      --tuna-800: #07465b;
-      --tuna-700: #08677d;
-      --tuna-600: #0b829a;
-      --tuna-500: #13a3b8;
-      --tuna-300: #70d8df;
-      --reef: #d8fbff;
-      --foam: #f4fdff;
-      --sand: #f7fbf7;
-      --coral: #ff7f6e;
-      --kelp: #19a974;
-      --amber: #f59e0b;
-      --danger: #e5484d;
-      --ink: #102932;
-      --muted: #657983;
-      --border: rgba(5, 44, 58, .12);
-      --shadow: 0 18px 45px rgba(5, 44, 58, .12);
-      --radius: 18px;
-      color-scheme: light;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: var(--ink);
-      background:
-        radial-gradient(circle at 15% 8%, rgba(112, 216, 223, .38), transparent 28rem),
-        radial-gradient(circle at 85% 2%, rgba(255, 127, 110, .16), transparent 24rem),
-        linear-gradient(180deg, #f4fdff 0%, #eef9f8 48%, #f9fcf7 100%);
-    }
-    a { color: var(--tuna-700); }
-    .app-shell { max-width: 1440px; margin: 0 auto; padding: 22px; }
-    .navbar {
-      position: sticky; top: 12px; z-index: 10;
-      display: flex; align-items: center; justify-content: space-between; gap: 16px;
-      padding: 14px 16px; border: 1px solid rgba(255,255,255,.62); border-radius: 24px;
-      background: rgba(255,255,255,.74); backdrop-filter: blur(18px); box-shadow: var(--shadow);
-    }
-    .brand { display: flex; align-items: center; gap: 12px; min-width: 230px; }
-    .logo {
-      width: 46px; height: 46px; border-radius: 16px; display: grid; place-items: center;
-      background: linear-gradient(135deg, var(--tuna-800), var(--tuna-500)); color: white;
-      box-shadow: inset 0 -8px 18px rgba(0,0,0,.12);
-      font-weight: 900; letter-spacing: -.06em;
-    }
-    .brand h1 { margin: 0; font-size: 1.15rem; line-height: 1.1; letter-spacing: -.03em; }
-    .brand small { color: var(--muted); display: block; margin-top: 3px; }
-    .nav-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
-    .hero { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(320px, .65fr); gap: 18px; margin: 22px 0; }
-    .hero-card {
-      border-radius: 28px; padding: 28px; overflow: hidden; position: relative;
-      background: linear-gradient(135deg, rgba(5,44,58,.97), rgba(8,103,125,.94)); color: white; box-shadow: var(--shadow);
-    }
-    .hero-card:after {
-      content: ""; position: absolute; inset: auto -70px -130px auto; width: 320px; height: 320px;
-      background: radial-gradient(circle, rgba(112,216,223,.58), transparent 60%); border-radius: 50%;
-    }
-    .hero h2 { margin: 0; font-size: clamp(2rem, 4vw, 4.6rem); line-height: .95; letter-spacing: -.07em; }
-    .hero p { max-width: 760px; color: rgba(255,255,255,.82); font-size: 1rem; line-height: 1.65; }
-    .status-strip { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
-    .pill {
-      display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; border-radius: 999px;
-      background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.18); color: inherit; font-size: .85rem;
-    }
-    .grid { display: grid; gap: 16px; }
-    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-    .layout { display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.35fr); gap: 16px; align-items: start; }
-    .card {
-      background: rgba(255,255,255,.86); border: 1px solid rgba(255,255,255,.68); border-radius: var(--radius);
-      box-shadow: 0 10px 28px rgba(5,44,58,.08); padding: 16px;
-    }
-    .card-header { display: flex; align-items: start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
-    .card h3 { margin: 0; font-size: 1rem; letter-spacing: -.02em; }
-    .card p { color: var(--muted); line-height: 1.55; }
-    .metric { padding: 16px; border-radius: 18px; background: linear-gradient(180deg, rgba(216,251,255,.82), rgba(255,255,255,.72)); border: 1px solid var(--border); }
-    .metric .value { font-size: 1.85rem; font-weight: 850; letter-spacing: -.06em; color: var(--tuna-800); }
-    .metric .label { color: var(--muted); font-size: .84rem; margin-top: 4px; }
-    .form-control, .form-select, textarea, input, select {
-      width: 100%; border: 1px solid rgba(5,44,58,.16); border-radius: 13px; padding: 11px 12px;
-      background: rgba(255,255,255,.94); color: var(--ink); outline: none; font: inherit;
-      transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
-    }
-    textarea { min-height: 92px; resize: vertical; }
-    input:focus, textarea:focus, select:focus { border-color: var(--tuna-500); box-shadow: 0 0 0 4px rgba(19,163,184,.13); background: white; }
-    label { display: block; font-size: .82rem; color: var(--muted); margin: 10px 0 6px; }
-    .btn {
-      border: 1px solid transparent; border-radius: 999px; padding: 10px 14px; font: inherit; font-weight: 750; cursor: pointer;
-      display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 38px;
-      transition: transform .12s ease, box-shadow .12s ease, background .12s ease, border-color .12s ease;
-    }
-    .btn:hover { transform: translateY(-1px); }
-    .btn-primary { color: white; background: linear-gradient(135deg, var(--tuna-700), var(--tuna-500)); box-shadow: 0 10px 22px rgba(8,103,125,.18); }
-    .btn-coral { color: white; background: linear-gradient(135deg, #e96857, var(--coral)); box-shadow: 0 10px 22px rgba(255,127,110,.2); }
-    .btn-light { color: var(--tuna-800); background: rgba(255,255,255,.86); border-color: rgba(5,44,58,.1); }
-    .btn-outline { color: var(--tuna-800); background: transparent; border-color: rgba(8,103,125,.28); }
-    .btn-danger { color: white; background: var(--danger); }
-    .btn-sm { padding: 7px 10px; min-height: 31px; font-size: .82rem; }
-    .badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 4px 8px; font-size: .74rem; font-weight: 800; border: 1px solid rgba(5,44,58,.1); background: #edf8f9; color: var(--tuna-800); }
-    .badge.ok { background: #e7f8ef; color: #087f55; }
-    .badge.warn { background: #fff7e5; color: #9a5b00; }
-    .badge.danger { background: #ffecec; color: #b4232a; }
-    .badge.info { background: #e8f7ff; color: #076184; }
-    .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 14px; background: white; }
-    table { width: 100%; border-collapse: collapse; font-size: .88rem; }
-    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid rgba(5,44,58,.08); vertical-align: top; }
-    th { color: var(--muted); font-size: .74rem; text-transform: uppercase; letter-spacing: .08em; background: rgba(244,253,255,.78); }
-    tr:last-child td { border-bottom: 0; }
-    pre, code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-    pre { margin: 0; padding: 12px; border-radius: 14px; overflow: auto; background: #062634; color: #d7fbff; max-height: 340px; font-size: .82rem; line-height: 1.45; }
-    .terminal { background: #041b25; color: #d7fbff; border-radius: 16px; padding: 14px; overflow: auto; max-height: 390px; }
-    .muted { color: var(--muted); }
-    .tiny { font-size: .78rem; }
-    .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .stack { display: grid; gap: 10px; }
-    .alert {
-      padding: 12px 14px; border-radius: 16px; border: 1px solid rgba(8,103,125,.16);
-      background: rgba(216,251,255,.68); color: var(--tuna-900); line-height: 1.5;
-    }
-    .alert.coral { border-color: rgba(255,127,110,.26); background: rgba(255,127,110,.12); }
-    .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
-    .tab-panel[hidden] { display: none; }
-    .footer { color: var(--muted); text-align: center; padding: 26px 0 12px; }
-    @media (max-width: 1100px) { .hero, .layout { grid-template-columns: 1fr; } .grid-4 { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 720px) { .app-shell { padding: 12px; } .navbar { position: static; } .grid-2, .grid-3, .grid-4, .split { grid-template-columns: 1fr; } .hero-card { padding: 20px; } .nav-actions { justify-content: stretch; } .nav-actions > * { flex: 1 1 auto; } }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TunaFlowAI Dashboard</title>
+<style>
+:root{
+  --tf-ocean-950:#071b2c;
+  --tf-ocean-900:#0b2942;
+  --tf-ocean-800:#113653;
+  --tf-ocean-700:#164b6f;
+  --tf-aqua-500:#1dd3c7;
+  --tf-aqua-300:#83f3e7;
+  --tf-tuna-200:#dce9ef;
+  --tf-tuna-300:#b6cad3;
+  --tf-tuna-500:#6d8794;
+  --tf-coral:#ff7a59;
+  --tf-lime:#b7f36b;
+  --tf-card:rgba(255,255,255,.075);
+  --tf-card-strong:rgba(255,255,255,.12);
+  --tf-border:rgba(220,233,239,.18);
+  --tf-shadow:0 20px 70px rgba(0,0,0,.28);
+  --tf-radius:22px;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:radial-gradient(circle at 18% 8%,rgba(29,211,199,.25),transparent 27rem),radial-gradient(circle at 82% 15%,rgba(255,122,89,.16),transparent 26rem),linear-gradient(135deg,var(--tf-ocean-950),var(--tf-ocean-900) 55%,#061522);color:#f5fbff}
+body{letter-spacing:.01em}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+.shell{display:grid;grid-template-columns:280px 1fr;min-height:100vh}
+.sidebar{position:sticky;top:0;height:100vh;padding:24px;border-right:1px solid var(--tf-border);background:linear-gradient(180deg,rgba(7,27,44,.92),rgba(7,27,44,.68));backdrop-filter:blur(16px)}
+.brand{display:flex;align-items:center;gap:14px;margin-bottom:26px}
+.logo-mark{width:54px;height:54px;display:grid;place-items:center;border-radius:18px;background:linear-gradient(135deg,var(--tf-aqua-500),#0b7ea2);box-shadow:0 12px 36px rgba(29,211,199,.22)}
+.logo-mark svg{width:40px;height:40px;display:block;filter:drop-shadow(0 5px 10px rgba(0,0,0,.2))}
+.brand h1{font-size:1.1rem;line-height:1.1;margin:0;font-weight:800;letter-spacing:.02em}
+.brand small{display:block;color:var(--tf-tuna-300);font-weight:600;margin-top:3px}
+.nav{display:grid;gap:9px;margin:18px 0 24px}
+.nav button{border:1px solid transparent;background:transparent;color:var(--tf-tuna-200);border-radius:14px;text-align:left;padding:12px 14px;font-weight:700}
+.nav button.active,.nav button:hover{background:var(--tf-card-strong);border-color:var(--tf-border);color:#fff}
+.sidebar-card{border:1px solid var(--tf-border);background:var(--tf-card);border-radius:18px;padding:15px;margin-top:14px}
+.sidebar-card b{display:block;margin-bottom:5px}.muted{color:var(--tf-tuna-300)}
+.main{padding:28px 32px 44px;overflow:min(visible,auto)}
+.topbar{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:24px}
+.kicker{text-transform:uppercase;letter-spacing:.18em;color:var(--tf-aqua-300);font-size:.72rem;font-weight:800}.title{font-size:clamp(2rem,4vw,4.2rem);line-height:.94;margin:8px 0 10px;font-weight:900}.subtitle{max-width:860px;margin:0;color:var(--tf-tuna-200);font-size:1rem;line-height:1.55}.status-pill{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--tf-border);background:var(--tf-card);border-radius:999px;padding:9px 12px;font-weight:800;white-space:nowrap}.dot{width:9px;height:9px;border-radius:999px;background:var(--tf-lime);box-shadow:0 0 18px var(--tf-lime)}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}.card{grid-column:span 4;border:1px solid var(--tf-border);border-radius:var(--tf-radius);background:linear-gradient(180deg,var(--tf-card-strong),rgba(255,255,255,.055));box-shadow:var(--tf-shadow);padding:18px;min-height:120px}.card.large{grid-column:span 8}.card.full{grid-column:1/-1}.card h2,.card h3{margin:0 0 12px;font-size:1.05rem}.metric{font-size:2.1rem;font-weight:900;line-height:1;margin:.2rem 0}.label{font-size:.8rem;text-transform:uppercase;letter-spacing:.12em;color:var(--tf-tuna-300);font-weight:800}.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.field{display:grid;gap:7px;margin-bottom:12px}.field label{font-size:.78rem;text-transform:uppercase;letter-spacing:.11em;color:var(--tf-tuna-300);font-weight:800}.input,select,textarea{width:100%;border:1px solid var(--tf-border);border-radius:14px;background:rgba(3,16,27,.55);color:#fff;padding:12px 13px;outline:none}textarea{min-height:110px;resize:vertical}.input:focus,select:focus,textarea:focus{border-color:rgba(29,211,199,.7);box-shadow:0 0 0 3px rgba(29,211,199,.14)}.btn{border:0;border-radius:14px;background:linear-gradient(135deg,var(--tf-aqua-500),#0ba5bd);color:#04202b;font-weight:900;padding:12px 15px;box-shadow:0 14px 26px rgba(29,211,199,.18)}.btn.secondary{background:rgba(255,255,255,.09);color:#fff;border:1px solid var(--tf-border);box-shadow:none}.btn.danger{background:linear-gradient(135deg,var(--tf-coral),#ffad6e);color:#281008}.btn:disabled{opacity:.55;cursor:not-allowed}.split{display:grid;grid-template-columns:1fr 1fr;gap:12px}.panel{display:none}.panel.active{display:block}.list{display:grid;gap:9px;max-height:460px;overflow:auto}.item{border:1px solid var(--tf-border);background:rgba(255,255,255,.055);border-radius:16px;padding:12px}.item strong{display:block;margin-bottom:4px}.badge{display:inline-flex;align-items:center;border:1px solid var(--tf-border);border-radius:999px;padding:4px 8px;font-size:.76rem;font-weight:800;color:var(--tf-tuna-200);background:rgba(255,255,255,.07)}.badge.high,.badge.critical{color:#fff;background:rgba(255,122,89,.22);border-color:rgba(255,122,89,.4)}.badge.medium{color:#fff;background:rgba(255,190,90,.18);border-color:rgba(255,190,90,.36)}.code{white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.82rem;line-height:1.45;background:rgba(0,0,0,.25);border-radius:14px;padding:12px;border:1px solid var(--tf-border);max-height:360px;overflow:auto}.toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-bottom:13px}.table{width:100%;border-collapse:separate;border-spacing:0 8px}.table td,.table th{text-align:left;padding:10px 12px}.table tr{background:rgba(255,255,255,.055)}.table tr td:first-child,.table tr th:first-child{border-radius:14px 0 0 14px}.table tr td:last-child,.table tr th:last-child{border-radius:0 14px 14px 0}.table th{color:var(--tf-tuna-300);font-size:.75rem;text-transform:uppercase;letter-spacing:.1em}.toast{position:fixed;right:24px;bottom:24px;max-width:420px;border:1px solid var(--tf-border);border-radius:18px;background:rgba(7,27,44,.95);box-shadow:var(--tf-shadow);padding:14px 16px;display:none}.toast.show{display:block}.wave{height:8px;border-radius:999px;background:linear-gradient(90deg,var(--tf-aqua-500),var(--tf-tuna-300),var(--tf-coral));opacity:.9;margin-top:18px}
+@media (max-width:980px){.shell{grid-template-columns:1fr}.sidebar{position:relative;height:auto}.main{padding:22px}.card,.card.large{grid-column:1/-1}.split{grid-template-columns:1fr}.topbar{display:block}.status-pill{margin-top:16px}}
+</style>
 </head>
 <body>
-  <div class="app-shell">
-    <nav class="navbar">
-      <div class="brand">
-        <div class="logo">TF</div>
-        <div><h1>TunaFlowAI</h1><small>Lightweight work-ops dashboard</small></div>
-      </div>
-      <div class="nav-actions">
-        <input id="apiToken" class="form-control" style="max-width:260px" placeholder="API token (optional)">
-        <button id="saveToken" class="btn btn-light">Save token</button>
-        <button id="refresh" class="btn btn-primary">Refresh</button>
-        <button id="logout" class="btn btn-outline">Logout</button>
-      </div>
-    </nav>
-
-    <section class="hero">
-      <div class="hero-card">
-        <span class="pill">Tuna theme • Bootstrap-like • zero dependency</span>
-        <h2>Control panel untuk agent, skills, channels, approvals.</h2>
-        <p>GUI ini hanya lapisan kontrol ringan. Semua perintah tetap bisa masuk lewat channel seperti Telegram, Slack, Discord, WhatsApp, webhook, atau API. Tindakan berat seperti command lokal, file write, pause ads, booking, dan Codex CLI tetap melewati approval/risk policy.</p>
-        <div class="status-strip" id="heroBadges">
-          <span class="pill">Loading runtime...</span>
-        </div>
-      </div>
-      <div class="grid grid-2" id="metrics"></div>
-    </section>
-
-    <section class="layout">
-      <div class="grid">
-        <div class="card">
-          <div class="card-header"><div><h3>Chat / Event composer</h3><div class="muted tiny">Kirim instruksi via GUI atau simulasikan event channel.</div></div><span class="badge info">control</span></div>
-          <div class="split">
-            <div><label>Channel</label><input id="chatChannel" placeholder="web, telegram, slack, discord..."></div>
-            <div><label>Conversation / recipient</label><input id="chatConversation" placeholder="conversationId atau chatId"></div>
-          </div>
-          <label>Message</label>
-          <textarea id="chatText" placeholder="Contoh: cek skill data analyst dan buat laporan CSV terbaru"></textarea>
-          <div class="actions" style="margin-top:10px"><button id="sendChat" class="btn btn-primary">Send chat</button><button id="fillEvent" class="btn btn-outline">Fill event JSON</button></div>
-          <label>Raw event JSON</label>
-          <textarea id="eventJson" spellcheck="false">{"type":"user.message","text":""}</textarea>
-          <div class="actions" style="margin-top:10px"><button id="emitEvent" class="btn btn-coral">Emit event</button></div>
-          <div id="actionLog" class="terminal tiny" style="margin-top:12px">No action yet.</div>
-        </div>
-
-        <div class="card">
-          <div class="card-header"><h3>Persona & identity</h3><span class="badge">runtime</span></div>
-          <label>Switch persona</label>
-          <div class="actions"><select id="personaSelect" class="form-select"></select><button id="switchPersona" class="btn btn-primary">Switch</button></div>
-          <div class="split">
-            <div><label>Agent name</label><input id="identityName" placeholder="Tuna"></div>
-            <div><label>Personality</label><input id="identityPersonality" placeholder="calm, proactive, careful"></div>
-          </div>
-          <label>Raw identity patch JSON</label>
-          <textarea id="identityJson" spellcheck="false">{}</textarea>
-          <div class="actions" style="margin-top:10px"><button id="saveIdentity" class="btn btn-outline">Save identity</button></div>
-        </div>
-
-        <div class="card">
-          <div class="card-header"><h3>Tasks & budgets</h3><span class="badge">planning</span></div>
-          <label>New task title</label>
-          <input id="taskTitle" placeholder="Analyze new campaign metrics">
-          <div class="actions" style="margin-top:10px"><button id="createTask" class="btn btn-primary">Create task</button></div>
-          <div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>Task</th><th>Status</th><th>Budget</th></tr></thead><tbody id="taskRows"></tbody></table></div>
-        </div>
-
-        <div class="card">
-          <div class="card-header"><h3>Channels</h3><span class="badge ok">parity</span></div>
-          <div class="alert">GUI tidak mengganti channel. Channel tetap punya kontrol penuh melalui webhook/API, lalu output dapat dikirim balik lewat outbound router jika adapter mendukung.</div>
-          <div id="channelRows" class="stack" style="margin-top:12px"></div>
-        </div>
-      </div>
-
-      <div class="grid">
-        <div class="grid grid-3">
-          <div class="card"><div class="card-header"><h3>Status</h3><span id="statusBadge" class="badge warn">loading</span></div><pre id="statusPre">{}</pre></div>
-          <div class="card"><div class="card-header"><h3>Models</h3><span class="badge">fallback</span></div><div id="modelRows" class="stack"></div></div>
-          <div class="card"><div class="card-header"><h3>Approvals</h3><span id="approvalCount" class="badge danger">0</span></div><div id="approvalRows" class="stack"></div></div>
-        </div>
-
-        <div class="card">
-          <div class="card-header"><div><h3>Job skills</h3><div class="muted tiny">Reload setelah menambah bundled/acquired skills.</div></div><div class="actions"><button id="reloadSkills" class="btn btn-outline btn-sm">Reload</button></div></div>
-          <div class="split"><input id="skillSource" placeholder="loaded skill name or local path"><button id="acquireSkill" class="btn btn-primary">Acquire</button></div>
-          <div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>Skill</th><th>Jobs</th><th>Risk</th><th>Tools</th></tr></thead><tbody id="skillRows"></tbody></table></div>
-        </div>
-
-        <div class="card">
-          <div class="tabs">
-            <button class="btn btn-light btn-sm" data-tab="state">State</button>
-            <button class="btn btn-light btn-sm" data-tab="runs">Runs</button>
-            <button class="btn btn-light btn-sm" data-tab="events">Events</button>
-            <button class="btn btn-light btn-sm" data-tab="audit">Audit</button>
-            <button class="btn btn-light btn-sm" data-tab="tools">Tools</button>
-            <button class="btn btn-light btn-sm" data-tab="secrets">Secrets</button>
-          </div>
-          <div id="tab-state" class="tab-panel"><pre id="statePre">{}</pre></div>
-          <div id="tab-runs" class="tab-panel" hidden><pre id="runsPre">[]</pre></div>
-          <div id="tab-events" class="tab-panel" hidden><pre id="eventsPre">[]</pre></div>
-          <div id="tab-audit" class="tab-panel" hidden><pre id="auditPre">[]</pre></div>
-          <div id="tab-tools" class="tab-panel" hidden><pre id="toolsPre">[]</pre></div>
-          <div id="tab-secrets" class="tab-panel" hidden><pre id="secretsPre">[]</pre></div>
-        </div>
-
-        <div class="card">
-          <div class="card-header"><h3>When command is required</h3><span class="badge warn">PC command</span></div>
-          <div class="alert coral tiny">
-            Codex OAuth, OCR/scanned PDF, real ad-platform mutation, real calendar booking, and local shell execution must run on the trusted PC/server. Use the approval queue for risky actions. For Codex OAuth: install Codex CLI, run <code>codex login</code> or <code>codex login --device-auth</code>, then enable model <code>openai-codex</code> in config.
-          </div>
-        </div>
-      </div>
-    </section>
-    <div class="footer tiny">TunaFlowAI dashboard is dependency-free: no Bootstrap bundle, no icon font, no heavy client framework.</div>
+<div class="shell">
+<aside class="sidebar">
+  <div class="brand">
+    <div class="logo-mark" aria-label="TunaFlowAI fish logo">
+      <svg viewBox="0 0 64 64" role="img" aria-hidden="true">
+        <path d="M6 33c7-11 18-17 32-17 8 0 15 3 20 9l-7 8 7 8c-5 6-12 9-20 9C24 50 13 44 6 33Z" fill="#dce9ef"/>
+        <path d="M12 33c6-8 15-12 26-12 6 0 12 2 16 6l-5 6 5 6c-4 4-10 6-16 6-11 0-20-4-26-12Z" fill="#1dd3c7" opacity=".9"/>
+        <path d="M45 18c-4 5-8 9-15 12 8 1 13 5 17 12 2-8 2-16-2-24Z" fill="#83f3e7"/>
+        <circle cx="22" cy="31" r="2.6" fill="#071b2c"/>
+        <path d="M5 33 18 26v14L5 33Z" fill="#ff7a59"/>
+      </svg>
+    </div>
+    <div><h1>TunaFlowAI</h1><small>Local agent control center</small></div>
   </div>
-
-  <script>
-    const AUTH_ENABLED = ${authFlag};
-    const $ = function(id) { return document.getElementById(id); };
-    const state = { overview: null, token: localStorage.getItem('tunaflow.apiToken') || '' };
-
-    function headers(extra) {
-      const base = Object.assign({ 'content-type': 'application/json' }, extra || {});
-      if (state.token) base.authorization = 'Bearer ' + state.token;
-      return base;
-    }
-    async function api(path, options) {
-      const res = await fetch(path, Object.assign({ headers: headers() }, options || {}));
-      const text = await res.text();
-      let data = null;
-      try { data = text ? JSON.parse(text) : null; } catch (_err) { data = text; }
-      if (!res.ok) throw new Error((data && data.error) || text || ('HTTP ' + res.status));
-      return data;
-    }
-    function log(message, data) {
-      const prefix = new Date().toLocaleTimeString() + ' ' + message;
-      $('actionLog').textContent = prefix + (data === undefined ? '' : '\n' + pretty(data));
-    }
-    function pretty(value) { return JSON.stringify(value, null, 2); }
-    function esc(value) {
-      return String(value === undefined || value === null ? '' : value)
-        .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
-    }
-    function badge(text, cls) { return '<span class="badge ' + (cls || '') + '">' + esc(text) + '</span>'; }
-    function setText(id, value) { $(id).textContent = typeof value === 'string' ? value : pretty(value); }
-
-    async function refresh() {
-      try {
-        const overview = await api('/overview');
-        state.overview = overview;
-        render(overview);
-        log('Refreshed overview');
-      } catch (err) {
-        $('statusBadge').textContent = 'error';
-        $('statusBadge').className = 'badge danger';
-        log('Refresh failed', { error: err.message, authEnabled: AUTH_ENABLED });
-      }
-    }
-
-    function render(data) {
-      const health = data.health || {};
-      $('statusBadge').textContent = health.ok ? 'ok' : 'check';
-      $('statusBadge').className = 'badge ' + (health.ok ? 'ok' : 'warn');
-      const approvals = data.approvals || [];
-      const skills = data.skills || [];
-      const channels = data.channels || [];
-      const models = data.models || {};
-      $('heroBadges').innerHTML = [
-        '<span class="pill">Models ' + Object.keys(models).length + '</span>',
-        '<span class="pill">Skills ' + skills.length + '</span>',
-        '<span class="pill">Channels ' + channels.length + '</span>',
-        '<span class="pill">Pending approvals ' + approvals.length + '</span>'
-      ].join('');
-      $('metrics').innerHTML = metric('Runs', (data.runs || []).length, 'recent runtime runs') + metric('Events', (data.events || []).length, 'recent compact events') + metric('Tools', (data.tools || []).length, 'registered tool actions') + metric('Skills', skills.length, 'loaded job skills');
-      setText('statusPre', { ok: health.ok, identity: data.identity, activePersona: data.activePersona, auditVerification: data.auditVerification });
-      setText('statePre', data.state || {});
-      setText('runsPre', data.runs || []);
-      setText('eventsPre', data.events || []);
-      setText('auditPre', data.audit || []);
-      setText('toolsPre', data.tools || []);
-      setText('secretsPre', data.secrets || []);
-      renderModels(models);
-      renderApprovals(approvals);
-      renderSkills(skills);
-      renderPersonas(data.personas || [], data.activePersona || null);
-      renderIdentity(data.identity || {});
-      renderTasks(data.tasks || [], data.activeTask || null);
-      renderChannels(channels);
-    }
-    function metric(value, label, sub) {
-      return '<div class="metric"><div class="value">' + esc(value) + '</div><div class="label">' + esc(label) + '</div><div class="tiny muted">' + esc(sub) + '</div></div>';
-    }
-    function renderModels(models) {
-      const entries = Object.entries(models || {});
-      $('modelRows').innerHTML = entries.length ? entries.map(function(pair) {
-        const name = pair[0]; const m = pair[1] || {};
-        const cls = m.lastError ? 'danger' : (m.coolingDown ? 'warn' : 'ok');
-        return '<div class="alert tiny"><div class="actions" style="justify-content:space-between"><strong>' + esc(name) + '</strong>' + badge(m.lastError ? 'error' : (m.coolingDown ? 'cooldown' : 'ready'), cls) + '</div><div class="muted">success ' + esc(m.successes || 0) + ' / failures ' + esc(m.failures || 0) + '</div>' + (m.lastError ? '<div class="tiny">' + esc(m.lastError).slice(0, 180) + '</div>' : '') + '</div>';
-      }).join('') : '<div class="muted tiny">No models.</div>';
-    }
-    function renderApprovals(approvals) {
-      $('approvalCount').textContent = String((approvals || []).length);
-      $('approvalRows').innerHTML = (approvals || []).length ? approvals.map(function(a) {
-        const id = a.id || a.approvalId || '';
-        return '<div class="alert tiny"><div class="actions" style="justify-content:space-between"><strong>' + esc(a.tool || a.type || id) + '</strong>' + badge(a.risk || a.status || 'pending', 'danger') + '</div><div class="muted">' + esc(id) + '</div><pre style="margin-top:8px;max-height:160px">' + esc(pretty(a.args || a)) + '</pre><div class="actions" style="margin-top:8px"><button class="btn btn-primary btn-sm" data-approve="' + esc(id) + '">Approve</button><button class="btn btn-danger btn-sm" data-reject="' + esc(id) + '">Reject</button></div></div>';
-      }).join('') : '<div class="muted tiny">No pending approvals.</div>';
-    }
-    function renderSkills(skills) {
-      $('skillRows').innerHTML = (skills || []).map(function(s) {
-        const riskCls = s.risk === 'high' || s.risk === 'critical' ? 'danger' : (s.risk === 'medium' ? 'warn' : 'ok');
-        return '<tr><td><strong>' + esc(s.name) + '</strong><div class="tiny muted">' + esc(s.description || '') + '</div></td><td>' + esc((s.jobs || []).join(', ') || s.job || '-') + '</td><td>' + badge(s.risk || 'low', riskCls) + '</td><td class="tiny">' + esc((s.tools || []).join(', ')) + '</td></tr>';
-      }).join('') || '<tr><td colspan="4" class="muted">No skills loaded.</td></tr>';
-    }
-    function renderPersonas(personas, active) {
-      const activeId = (active && (active.id || active.name)) || '';
-      $('personaSelect').innerHTML = (personas || []).map(function(p) {
-        const id = p.id || p.name;
-        return '<option value="' + esc(id) + '" ' + (id === activeId ? 'selected' : '') + '>' + esc(p.name || id) + '</option>';
-      }).join('');
-    }
-    function renderIdentity(identity) {
-      $('identityName').value = identity.name || '';
-      $('identityPersonality').value = identity.personality || '';
-      $('identityJson').value = pretty(identity || {});
-    }
-    function renderTasks(tasks, active) {
-      const activeId = active && active.id;
-      $('taskRows').innerHTML = (tasks || []).map(function(t) {
-        return '<tr><td><strong>' + esc(t.title || t.id) + '</strong>' + (t.id === activeId ? ' ' + badge('active', 'ok') : '') + '<div class="tiny muted">' + esc(t.id || '') + '</div></td><td>' + esc(t.status || '-') + '</td><td class="tiny">' + esc(pretty(t.budget || t.budgets || {})) + '</td></tr>';
-      }).join('') || '<tr><td colspan="3" class="muted">No tasks.</td></tr>';
-    }
-    function renderChannels(channels) {
-      $('channelRows').innerHTML = (channels || []).length ? channels.map(function(c) {
-        const id = c.id || c.name || c.channel || 'channel';
-        const url = location.origin + '/channels/' + encodeURIComponent(id) + '/webhook';
-        return '<div class="alert tiny"><div class="actions" style="justify-content:space-between"><strong>' + esc(id) + '</strong>' + badge(c.enabled === false ? 'disabled' : 'enabled', c.enabled === false ? 'warn' : 'ok') + '</div><div class="muted">' + esc(c.type || c.provider || '') + '</div><code>' + esc(url) + '</code></div>';
-      }).join('') : '<div class="muted tiny">No configured channels.</div>';
-    }
-
-    async function sendChat() {
-      const body = {
-        text: $('chatText').value,
-        channel: $('chatChannel').value || undefined,
-        conversationId: $('chatConversation').value || undefined,
-        recipientId: $('chatConversation').value || undefined
-      };
-      const result = await api('/chat', { method: 'POST', body: JSON.stringify(body) });
-      log('Chat sent', result);
-      await refresh();
-    }
-    function fillEvent() {
-      $('eventJson').value = pretty({ type: 'user.message', text: $('chatText').value || '', channel: $('chatChannel').value || undefined, conversationId: $('chatConversation').value || undefined });
-    }
-    async function emitEvent() {
-      let body;
-      try { body = JSON.parse($('eventJson').value || '{}'); } catch (err) { throw new Error('Invalid event JSON: ' + err.message); }
-      const result = await api('/events', { method: 'POST', body: JSON.stringify(body) });
-      log('Event emitted', result);
-      await refresh();
-    }
-    async function saveIdentity() {
-      let patch = {};
-      try { patch = JSON.parse($('identityJson').value || '{}'); } catch (err) { throw new Error('Invalid identity JSON: ' + err.message); }
-      if ($('identityName').value) patch.name = $('identityName').value;
-      if ($('identityPersonality').value) patch.personality = $('identityPersonality').value;
-      const result = await api('/identity', { method: 'POST', body: JSON.stringify(patch) });
-      log('Identity saved', result);
-      await refresh();
-    }
-    async function switchPersona() {
-      const name = $('personaSelect').value;
-      if (!name) return;
-      const result = await api('/personas/switch', { method: 'POST', body: JSON.stringify({ name: name, source: 'dashboard' }) });
-      log('Persona switched', result);
-      await refresh();
-    }
-    async function createTask() {
-      const title = $('taskTitle').value.trim();
-      if (!title) throw new Error('Task title is required');
-      const result = await api('/tasks', { method: 'POST', body: JSON.stringify({ title: title }) });
-      log('Task created', result);
-      $('taskTitle').value = '';
-      await refresh();
-    }
-    async function reloadSkills() {
-      const result = await api('/skills/reload', { method: 'POST', body: JSON.stringify({}) });
-      log('Skills reloaded', result);
-      await refresh();
-    }
-    async function acquireSkill() {
-      const source = $('skillSource').value.trim();
-      if (!source) throw new Error('Skill source is required');
-      const result = await api('/skills/acquire', { method: 'POST', body: JSON.stringify({ source: source }) });
-      log('Skill acquired', result);
-      await refresh();
-    }
-    async function resolveApproval(id, action) {
-      const result = await api('/approvals/' + encodeURIComponent(id) + '/' + action, { method: 'POST', body: JSON.stringify({ source: 'dashboard' }) });
-      log('Approval ' + action, result);
-      await refresh();
-    }
-    function switchTab(name) {
-      document.querySelectorAll('.tab-panel').forEach(function(panel) { panel.hidden = panel.id !== 'tab-' + name; });
-    }
-
-    document.addEventListener('click', function(evt) {
-      const approve = evt.target.getAttribute && evt.target.getAttribute('data-approve');
-      const reject = evt.target.getAttribute && evt.target.getAttribute('data-reject');
-      const tab = evt.target.getAttribute && evt.target.getAttribute('data-tab');
-      if (approve) resolveApproval(approve, 'approve').catch(function(err) { log('Approval failed', { error: err.message }); });
-      if (reject) resolveApproval(reject, 'reject').catch(function(err) { log('Rejection failed', { error: err.message }); });
-      if (tab) switchTab(tab);
-    });
-    function bind(id, fn) { $(id).addEventListener('click', function() { Promise.resolve(fn()).catch(function(err) { log('Action failed', { error: err.message }); }); }); }
-    bind('refresh', refresh);
-    bind('sendChat', sendChat);
-    bind('fillEvent', fillEvent);
-    bind('emitEvent', emitEvent);
-    bind('saveIdentity', saveIdentity);
-    bind('switchPersona', switchPersona);
-    bind('createTask', createTask);
-    bind('reloadSkills', reloadSkills);
-    bind('acquireSkill', acquireSkill);
-    $('saveToken').addEventListener('click', function() { state.token = $('apiToken').value.trim(); localStorage.setItem('tunaflow.apiToken', state.token); log('Token saved locally'); refresh(); });
-    $('logout').addEventListener('click', function() { state.token = ''; localStorage.removeItem('tunaflow.apiToken'); $('apiToken').value = ''; api('/auth/logout', { method: 'POST', body: '{}' }).catch(function() {}).finally(refresh); });
-    $('apiToken').value = state.token;
-    switchTab('state');
-    refresh();
-  </script>
+  <div class="nav" id="nav"></div>
+  <div class="sidebar-card"><b>Session</b><span class="muted" id="authBadge">${authBadge}</span><div class="field" style="margin-top:10px"><label>Bearer token</label><input class="input" id="tokenInput" type="password" placeholder="Paste local token" /></div><button class="btn secondary" id="saveToken">Save token</button></div>
+  <div class="sidebar-card"><b>Runtime</b><div class="muted" id="runtimeSummary">Loading...</div><div class="wave"></div></div>
+</aside>
+<main class="main">
+  <div class="topbar">
+    <div><div class="kicker">Tuna themed, Bootstrap-like, dependency-free</div><div class="title">Command every channel from one light GUI.</div><p class="subtitle">Choose a model, send channel events, inspect approvals, manage skills, review audit logs, and keep full command-line escape hatches for heavy local tasks.</p></div>
+    <div class="status-pill"><span class="dot"></span><span id="statusText">Connecting</span></div>
+  </div>
+  <section class="panel active" data-panel="overview"><div class="grid" id="overviewGrid"></div></section>
+  <section class="panel" data-panel="chat"><div class="grid"><div class="card large"><h2>Chat and channel command</h2><div class="split"><div class="field"><label>Model</label><select id="modelSelect"></select></div><div class="field"><label>Chain</label><select id="chainSelect"></select></div></div><div class="field"><label>Message</label><textarea id="chatText" placeholder="Ask TunaFlowAI to do something..."></textarea></div><div class="row"><button class="btn" id="sendChat">Send to TunaFlowAI</button><button class="btn secondary" id="refreshChatData">Refresh models</button></div></div><div class="card"><h2>Response</h2><div class="code" id="chatResult">No response yet.</div></div><div class="card full"><h2>Inject event</h2><div class="split"><div class="field"><label>Event type</label><input class="input" id="eventType" value="user.message" /></div><div class="field"><label>Priority</label><select id="eventPriority"><option>normal</option><option>high</option><option>low</option></select></div></div><div class="field"><label>Event text</label><textarea id="eventText" placeholder="Event text"></textarea></div><button class="btn secondary" id="postEvent">Post event</button></div></div></section>
+  <section class="panel" data-panel="models"><div class="grid"><div class="card full"><div class="toolbar"><h2>Model catalog and health</h2><button class="btn secondary" id="refreshModels">Refresh</button></div><div id="modelsView"></div></div></div></section>
+  <section class="panel" data-panel="skills"><div class="grid"><div class="card full"><div class="toolbar"><h2>Skills and tools</h2><button class="btn secondary" id="refreshSkills">Refresh</button></div><div class="split"><div><h3>Bundled skills</h3><div class="list" id="skillsList"></div></div><div><h3>Registered tools</h3><div class="list" id="toolsList"></div></div></div></div></div></section>
+  <section class="panel" data-panel="approvals"><div class="grid"><div class="card full"><div class="toolbar"><h2>Approvals</h2><button class="btn secondary" id="refreshApprovals">Refresh</button></div><div class="list" id="approvalsList"></div></div></div></section>
+  <section class="panel" data-panel="operations"><div class="grid"><div class="card"><h2>Tasks</h2><div class="list" id="tasksList"></div></div><div class="card"><h2>Channels</h2><div class="list" id="channelsList"></div></div><div class="card"><h2>Secrets</h2><div class="list" id="secretsList"></div></div><div class="card full"><h2>Runs</h2><div class="list" id="runsList"></div></div></div></section>
+  <section class="panel" data-panel="logs"><div class="grid"><div class="card large"><h2>Events</h2><div class="list" id="eventsList"></div></div><div class="card"><h2>Audit</h2><div class="list" id="auditList"></div></div></div></section>
+</main>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+(function(){
+  var panels = ['overview','chat','models','skills','approvals','operations','logs'];
+  var labels = {overview:'Overview',chat:'Chat and events',models:'Models',skills:'Skills and tools',approvals:'Approvals',operations:'Operations',logs:'Events and audit'};
+  var state = { token: localStorage.getItem('tunaflow.token') || '', catalog: null, models: null };
+  function $(id){ return document.getElementById(id); }
+  function esc(value){ return String(value == null ? '' : value).replace(/[&<>"']/g, function(ch){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]); }); }
+  function json(value){ try { return JSON.stringify(value, null, 2); } catch (_e) { return String(value); } }
+  function toast(message){ var el=$('toast'); el.textContent=message; el.className='toast show'; setTimeout(function(){ el.className='toast'; }, 3600); }
+  function headers(){ var h={'content-type':'application/json'}; if(state.token) h.authorization='Bearer '+state.token; return h; }
+  async function api(path, options){ var res = await fetch(path, Object.assign({headers:headers()}, options || {})); var text = await res.text(); var data; try{ data = text ? JSON.parse(text) : null; }catch(_e){ data = text; } if(!res.ok) throw new Error((data && data.error) || text || ('HTTP '+res.status)); return data; }
+  function setPanel(name){ document.querySelectorAll('.panel').forEach(function(p){ p.classList.toggle('active', p.dataset.panel===name); }); document.querySelectorAll('#nav button').forEach(function(b){ b.classList.toggle('active', b.dataset.panel===name); }); localStorage.setItem('tunaflow.panel', name); }
+  function initNav(){ $('nav').innerHTML = panels.map(function(name){ return '<button data-panel="'+name+'">'+labels[name]+'</button>'; }).join(''); document.querySelectorAll('#nav button').forEach(function(b){ b.addEventListener('click', function(){ setPanel(b.dataset.panel); }); }); setPanel(localStorage.getItem('tunaflow.panel') || 'overview'); }
+  function renderList(id, rows, mapper){ var el=$(id); if(!el) return; var list=Array.isArray(rows)?rows:[]; if(!list.length){ el.innerHTML='<div class="item muted">Nothing to show.</div>'; return; } el.innerHTML=list.map(mapper).join(''); }
+  function renderOverview(data){ var overview=data.overview||{}; var approvals=data.approvals||[]; var skills=data.skills||[]; var tools=data.tools||[]; var models=(data.catalog&&data.catalog.configuredModels)||[]; $('runtimeSummary').textContent = 'Skills '+skills.length+' / Tools '+tools.length+' / Models '+models.length; $('overviewGrid').innerHTML = [
+    ['Pending approvals', approvals.length, 'Approval-gated risky actions waiting for you.'],
+    ['Configured models', models.length, 'OpenAI, Codex OAuth, local, and compatible providers.'],
+    ['Bundled skills', skills.length, 'Role-based jobs and automation workflows.'],
+    ['Registered tools', tools.length, 'Safe local actions, dry-runs, and command hints.'],
+    ['Active persona', overview.activePersona || 'default', 'Persona-aware chain selection.'],
+    ['Agent status', overview.status || 'ready', 'Local gateway is reachable.']
+  ].map(function(m){return '<div class="card"><div class="label">'+esc(m[0])+'</div><div class="metric">'+esc(m[1])+'</div><div class="muted">'+esc(m[2])+'</div></div>';}).join(''); }
+  function renderModels(catalog, health){ state.catalog=catalog; state.models=health; var configured=catalog.configuredModels || catalog.models || []; var chains=catalog.chains || {}; var healthMap={}; ((health&&health.models)||[]).forEach(function(m){ healthMap[m.name]=m; }); var rows = configured.map(function(m){ var h=healthMap[m.name]||{}; return '<tr><td><strong>'+esc(m.name)+'</strong><br><span class="muted">'+esc(m.provider)+'</span></td><td>'+esc(m.model||m.codexModel||'default')+'</td><td><span class="badge '+esc(h.status||'')+'">'+esc(h.status|| (m.enabled===false?'disabled':'ready'))+'</span></td><td>'+esc((m.capabilities||[]).join(', '))+'</td></tr>'; }).join(''); $('modelsView').innerHTML = '<h3>Configured models</h3><table class="table"><thead><tr><th>Name</th><th>Model</th><th>Status</th><th>Capabilities</th></tr></thead><tbody>'+rows+'</tbody></table><h3>Chains</h3><div class="list">'+Object.keys(chains).map(function(k){return '<div class="item"><strong>'+esc(k)+'</strong><span class="muted">'+esc(chains[k].join(' -> '))+'</span></div>';}).join('')+'</div>';
+    var modelOptions = ['<option value="">Use chain default</option>'].concat(configured.map(function(m){ return '<option value="'+esc(m.name)+'">'+esc(m.name+' ('+(m.provider||'provider')+')')+'</option>'; })); $('modelSelect').innerHTML = modelOptions.join('');
+    var chainOptions = Object.keys(chains).map(function(name){ return '<option value="'+esc(name)+'">'+esc(name)+'</option>'; }); $('chainSelect').innerHTML = chainOptions.join(''); }
+  async function refreshCore(){ try{ var results=await Promise.allSettled([api('/overview'),api('/approvals'),api('/skills'),api('/tools'),api('/models/catalog'),api('/models'),api('/tasks'),api('/channels'),api('/secrets'),api('/runs'),api('/events'),api('/audit')]); var names=['overview','approvals','skills','tools','catalog','models','tasks','channels','secrets','runs','events','audit']; var data={}; results.forEach(function(r,i){ data[names[i]]=r.status==='fulfilled'?r.value:null; }); $('statusText').textContent='Online'; renderOverview(data); renderModels(data.catalog||{}, data.models||{}); renderList('skillsList',(data.skills&&data.skills.skills)||data.skills||[],function(s){return '<div class="item"><strong>'+esc(s.name||s.id)+'</strong><div class="muted">'+esc(s.description||s.job||'')+'</div></div>';}); renderList('toolsList',(data.tools&&data.tools.tools)||data.tools||[],function(t){return '<div class="item"><strong>'+esc(t.name)+'</strong><span class="badge '+esc(t.risk)+'">'+esc(t.risk)+'</span><div class="muted">'+esc(t.description||'')+'</div></div>';}); renderList('approvalsList',(data.approvals&&data.approvals.pending)||data.approvals||[],function(a){return '<div class="item"><strong>'+esc(a.id||a.tool||'approval')+'</strong><span class="badge '+esc(a.risk||'medium')+'">'+esc(a.risk||'medium')+'</span><div class="code">'+esc(json(a))+'</div></div>';}); renderList('tasksList',(data.tasks&&data.tasks.tasks)||data.tasks||[],function(t){return '<div class="item"><strong>'+esc(t.title||t.id||'task')+'</strong><div class="muted">'+esc(t.status||'')+'</div></div>';}); renderList('channelsList',(data.channels&&data.channels.channels)||data.channels||[],function(c){return '<div class="item"><strong>'+esc(c.id||c.name||'channel')+'</strong><div class="muted">'+esc(c.type||c.kind||'')+'</div></div>';}); renderList('secretsList',(data.secrets&&data.secrets.secrets)||data.secrets||[],function(s){return '<div class="item"><strong>'+esc(s.name||s.key||'secret')+'</strong><div class="muted">'+esc(s.status||'configured')+'</div></div>';}); renderList('runsList',(data.runs&&data.runs.runs)||data.runs||[],function(r){return '<div class="item"><strong>'+esc(r.id||'run')+'</strong><div class="muted">'+esc(r.status||'')+'</div></div>';}); renderList('eventsList',(data.events&&data.events.events)||data.events||[],function(e){return '<div class="item"><strong>'+esc(e.type||'event')+'</strong><div class="muted">'+esc(e.createdAt||e.timestamp||'')+'</div><div>'+esc(e.text||'')+'</div></div>';}); renderList('auditList',(data.audit&&data.audit.entries)||data.audit||[],function(a){return '<div class="item"><strong>'+esc(a.type||a.action||'audit')+'</strong><div class="muted">'+esc(a.createdAt||a.timestamp||'')+'</div></div>';}); }catch(err){ $('statusText').textContent='Offline'; toast(err.message); } }
+  async function sendChat(){ var text=$('chatText').value.trim(); if(!text){ toast('Write a message first.'); return; } var model=$('modelSelect').value; var chain=$('chainSelect').value; var body={text:text, message:text}; if(model){ body.model=model; body.chain=model; } else if(chain){ body.chain=chain; } $('chatResult').textContent='Sending...'; try{ var result=await api('/chat',{method:'POST',body:JSON.stringify(body)}); $('chatResult').textContent=json(result); await refreshCore(); }catch(err){ $('chatResult').textContent=err.message; } }
+  async function postEvent(){ var model=$('modelSelect').value; var body={type:$('eventType').value||'user.message', priority:$('eventPriority').value||'normal', text:$('eventText').value||'', payload:{source:'dashboard'}}; if(model){ body.payload.model=model; body.payload.chain=model; } try{ var result=await api('/events',{method:'POST',body:JSON.stringify(body)}); toast('Event posted: '+(result.id||'ok')); await refreshCore(); }catch(err){ toast(err.message); } }
+  function init(){ initNav(); $('tokenInput').value=state.token; $('saveToken').onclick=function(){ state.token=$('tokenInput').value.trim(); localStorage.setItem('tunaflow.token',state.token); toast('Token saved locally.'); refreshCore(); }; $('sendChat').onclick=sendChat; $('postEvent').onclick=postEvent; ['refreshModels','refreshSkills','refreshApprovals','refreshChatData'].forEach(function(id){ var el=$(id); if(el) el.onclick=refreshCore; }); refreshCore(); setInterval(refreshCore, 30000); }
+  init();
+})();
+</script>
 </body>
 </html>`;
 }
+
+export const dashboardHtml = renderDashboardHtml();

@@ -3,6 +3,7 @@ import path from 'node:path';
 import { ensureDir, limitNumber, safeJoin, trimToChars } from './utils.js';
 
 import { registerJobWorkflowTools } from '../tools/job-workflow-tools.js';
+import { registerExtendedJobTools } from '../tools/extended-job-tools.js';
 export class ToolRegistry {
   constructor({ workspace, auditLog = null, config = {}, sandboxRunner = null, browserOperator = null, secretVault = null }) {
     this.workspace = path.resolve(workspace || process.cwd());
@@ -15,6 +16,7 @@ export class ToolRegistry {
       commandDenyPatterns: config.commandDenyPatterns || ['git push', 'git reset --hard', 'npm publish', 'pnpm publish', 'yarn publish', 'rm -rf', 'curl | sh', 'wget | sh'],
       maxCommandOutputChars: config.maxCommandOutputChars || 6000,
       defaultCommandTimeoutMs: config.defaultCommandTimeoutMs || 30000,
+      extendedJobTools: config.extendedJobTools === true,
       marketData: config.marketData || {},
       telegram: config.telegram || {}
     };
@@ -61,6 +63,7 @@ export class ToolRegistry {
     this.registerBrowserTools();
     this.registerSystemTools();
     registerJobWorkflowTools(this);
+    if (this.config.extendedJobTools) registerExtendedJobTools(this);
   }
 
   registerMessagingTools() {

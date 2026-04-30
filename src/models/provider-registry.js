@@ -19,7 +19,7 @@ registerProvider('claude', (config) => new AnthropicProvider(config));
 registerProvider('gemini', (config) => new GeminiProvider(config));
 
 // These providers expose OpenAI-compatible chat completion endpoints.
-for (const provider of ['qwen', 'dashscope', 'minimax', 'deepseek', 'kimi', 'moonshot', 'openrouter', 'groq', 'together', 'fireworks', 'cerebras', 'ollama', 'lmstudio', 'vllm']) {
+for (const provider of ['qwen', 'dashscope', 'minimax', 'deepseek', 'kimi', 'moonshot', 'openrouter', 'groq', 'together', 'fireworks', 'cerebras', 'ollama', 'lmstudio', 'vllm', 'azure-openai', 'perplexity', 'mistral', 'xai']) {
   registerProvider(provider, (config) => new OpenAICompatibleProvider(applyProviderPreset(config)));
 }
 

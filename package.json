@@ -15,7 +15,8 @@
     "test": "node scripts/smoke-test.js",
     "check": "node src/cli.js check",
     "doctor": "node src/cli.js doctor",
-    "test:files": "node scripts/run-tests.js"
+    "test:files": "node scripts/run-tests.js",
+    "check:english": "node scripts/check-english-copy.mjs ."
   },
   "engines": {
     "node": ">=22.0.0"

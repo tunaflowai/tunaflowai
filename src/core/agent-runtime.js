@@ -243,6 +243,8 @@ export class AgentRuntime {
 }
 
 function chooseChain(event, persona) {
+  const requested = event?.payload?.model || event?.payload?.chain || event?.model || event?.chain;
+  if (typeof requested === 'string' && requested.trim()) return requested.trim();
   const preferred = persona?.preferredChains || {};
   if (preferred[event.type]) return preferred[event.type];
   if (event.priority === 'low') return preferred.low || 'cheap';

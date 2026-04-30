@@ -263,6 +263,17 @@
       "anthropic-sonnet",
       "deepseek",
       "local-mock-fallback"
+    ],
+    "codex": [
+      "openai-codex",
+      "openai-main",
+      "local-mock-fallback"
+    ],
+    "coding": [
+      "openai-codex",
+      "openai-main",
+      "ollama-local",
+      "local-mock-fallback"
     ]
   },
   "permissions": {
@@ -276,7 +287,8 @@
     "telegram": {
       "tokenEnv": "TELEGRAM_BOT_TOKEN",
       "chatIdEnv": "TELEGRAM_CHAT_ID"
-    }
+    },
+    "extendedJobTools": true
   },
   "personas": {
     "enabled": true,

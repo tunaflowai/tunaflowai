@@ -1,48 +1,42 @@
-# OpenAI Codex OAuth Provider
+# OpenAI Codex CLI with ChatGPT OAuth
 
-TunaFlowAI can keep the normal OpenAI API provider and also use Codex through ChatGPT OAuth.
+TunaFlowAI supports two OpenAI paths:
 
-## What this adds
+1. `openai` / `openai-compatible` for the standard OpenAI API key flow.
+2. `openai-codex` / `codex-cli` for the local Codex CLI authenticated with ChatGPT OAuth.
 
-- `openai-main`: regular OpenAI-compatible API provider using `OPENAI_API_KEY`.
-- `openai-codex`: local Codex CLI provider using the cached ChatGPT OAuth login from `codex login`.
-- `code` chain: tries `openai-codex`, then `openai-main`, then `local-mock-fallback`.
+## Local setup
 
-## Setup on the trusted PC/server
+Run these commands once on the same PC or server that runs TunaFlowAI:
 
 ```bash
 npm i -g @openai/codex@latest
-codex login
-# For headless/SSH machines:
-codex login --device-auth
+codex
 ```
 
-Then enable the model in `config/tunaflow.config.json`. If `gpt-5.5` is not available in your Codex account yet, change `model` to `gpt-5.4` or remove the field so Codex uses its default:
+The first launch prompts you to sign in. Choose ChatGPT sign-in, not API-key authentication. Some Codex CLI versions also expose explicit login commands such as `codex login` or device login for headless machines; use those only when available in your installed CLI.
+
+The Codex provider intentionally removes `OPENAI_API_KEY` from the Codex subprocess unless `passOpenAiApiKey` is set to `true`, so the default path uses the local ChatGPT OAuth session.
+
+## Example model config
 
 ```json
 {
-  "name": "openai-codex",
-  "provider": "codex-cli",
+  "name": "openai-codex-cli",
+  "provider": "openai-codex",
   "auth": "chatgpt-oauth",
-  "model": "gpt-5.5",
+  "codexModel": "gpt-5.5",
   "enabled": true,
-  "args": ["exec", "--ephemeral", "--sandbox", "read-only"],
-  "passOpenAiApiKey": false
+  "args": ["exec", "--ephemeral", "--sandbox", "read-only", "--skip-git-repo-check"],
+  "passOpenAiApiKey": false,
+  "capabilities": ["text", "json", "code", "reasoning", "local-cli"]
 }
 ```
 
-By default the Codex subprocess removes `OPENAI_API_KEY` from its environment so it prefers the ChatGPT OAuth session. The normal `openai-main` API model still keeps `OPENAI_API_KEY` support.
+## Safety notes
 
-## When command is required
+The default sandbox is `read-only`. Use `workspace-write` only for approved coding tasks. Use `danger-full-access` only in a disposable or fully controlled environment.
 
-Codex OAuth cannot be completed fully from the browser dashboard because it depends on the local Codex CLI credential store or OS keyring. Run `codex login` on the trusted PC/server. After login, TunaFlowAI can call Codex through the `codex-cli` provider.
+Heavy local tasks, such as installing Codex, logging in with OAuth, running FFmpeg, accessing thermal printers, or launching sub-agents, must still be performed from the PC/server command line or through an approved local adapter.
 
-Heavy or risky actions should remain approval gated:
-
-- `codex exec --full-auto` or writable sandbox actions.
-- `run_command` tool calls.
-- Live ad-platform mutations.
-- Real calendar scheduling or ticket booking.
-- OCR/scanned PDF parsing.
-
-Use read-only Codex args first. Only switch to `--full-auto` or broader sandbox modes in an isolated trusted workspace.
+Model note: OpenAI currently recommends starting Codex with `gpt-5.5` when it is available through ChatGPT sign-in, and using `gpt-5.4` during rollout if `gpt-5.5` is not available. You can still set `codexModel` to `gpt-5.3-codex` for coding-specific compatibility.

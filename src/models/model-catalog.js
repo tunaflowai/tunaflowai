@@ -21,6 +21,24 @@ export const PROVIDER_PRESETS = {
     passOpenAiApiKey: false,
     supports: { jsonMode: false, tools: false, streaming: false, vision: false, reasoning: true }
   },
+  'openai-codex': {
+    provider: 'openai-codex',
+    auth: 'chatgpt-oauth',
+    commandEnv: 'CODEX_BIN',
+    timeoutMs: 120000,
+    args: ['exec', '--ephemeral', '--sandbox', 'read-only', '--skip-git-repo-check'],
+    passOpenAiApiKey: false,
+    supports: { jsonMode: false, tools: false, streaming: false, vision: false, reasoning: true }
+  },
+  codex: {
+    provider: 'codex',
+    auth: 'chatgpt-oauth',
+    commandEnv: 'CODEX_BIN',
+    timeoutMs: 120000,
+    args: ['exec', '--ephemeral', '--sandbox', 'read-only'],
+    passOpenAiApiKey: false,
+    supports: { jsonMode: false, tools: false, streaming: false, vision: false, reasoning: true }
+  },
   anthropic: {
     provider: 'anthropic',
     baseUrl: 'https://api.anthropic.com/v1',
@@ -136,6 +154,37 @@ export const PROVIDER_PRESETS = {
     endpoint: '/chat/completions',
     jsonMode: true,
     supports: { jsonMode: true, tools: true, streaming: true, vision: false, reasoning: false }
+  },
+  'azure-openai': {
+    provider: 'azure-openai',
+    apiKeyEnv: 'AZURE_OPENAI_API_KEY',
+    endpoint: '/chat/completions',
+    jsonMode: true,
+    supports: { jsonMode: true, tools: true, streaming: true, vision: true, reasoning: true }
+  },
+  perplexity: {
+    provider: 'perplexity',
+    baseUrl: 'https://api.perplexity.ai',
+    apiKeyEnv: 'PERPLEXITY_API_KEY',
+    endpoint: '/chat/completions',
+    jsonMode: true,
+    supports: { jsonMode: true, tools: false, streaming: true, vision: false, reasoning: false }
+  },
+  mistral: {
+    provider: 'mistral',
+    baseUrl: 'https://api.mistral.ai/v1',
+    apiKeyEnv: 'MISTRAL_API_KEY',
+    endpoint: '/chat/completions',
+    jsonMode: true,
+    supports: { jsonMode: true, tools: true, streaming: true, vision: false, reasoning: true }
+  },
+  xai: {
+    provider: 'xai',
+    baseUrl: 'https://api.x.ai/v1',
+    apiKeyEnv: 'XAI_API_KEY',
+    endpoint: '/chat/completions',
+    jsonMode: true,
+    supports: { jsonMode: true, tools: true, streaming: true, vision: true, reasoning: true }
   }
 };
 
@@ -185,6 +234,7 @@ export function providerConfigExamples() {
   return {
     openai: { provider: 'openai', model: 'gpt-4.1-mini', apiKeyEnv: 'OPENAI_API_KEY' },
     'codex-cli': { provider: 'codex-cli', model: 'gpt-5.5', commandEnv: 'CODEX_BIN', auth: 'chatgpt-oauth' },
+    'openai-codex': { provider: 'openai-codex', model: 'gpt-5.5', commandEnv: 'CODEX_BIN', auth: 'chatgpt-oauth' },
     gemini: { provider: 'gemini', model: 'gemini-2.5-flash', apiKeyEnv: 'GEMINI_API_KEY' },
     anthropic: { provider: 'anthropic', model: 'claude-sonnet-4-5', apiKeyEnv: 'ANTHROPIC_API_KEY' },
     qwen: { provider: 'qwen', model: 'qwen-plus', apiKeyEnv: 'DASHSCOPE_API_KEY' },
