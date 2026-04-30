@@ -2,42 +2,43 @@
 
 TunaFlowAI (package name: `tunaflow`) is an open-source, event-driven work operating agent for building safe, token-efficient AI automation.
 
-It is inspired by the idea of connecting chat and real work to AI agents, but the design goal is intentionally focused:
-
 ```text
 Observe real work -> keep compact state -> call models only when needed -> fallback if a model fails -> execute tools with permission -> verify and audit.
 ```
 
-## Why TunaFlow exists
+## Why TunaFlowAI exists
 
-Most agent systems spend too many tokens because they send too much raw context into the model. TunaFlow keeps raw events in storage, then sends only compact work state into the model.
+Most agent systems spend too many tokens because they send too much raw context into the model. TunaFlowAI keeps raw events in storage, then sends only compact work state into the model.
 
-TunaFlow also treats model fallback as a first-class feature. If the primary model is down, slow, not configured, or returning bad output, the router can automatically try the next model in the chain.
+TunaFlowAI also treats model fallback as a first-class runtime feature. If the primary model is down, slow, not configured, or returning invalid JSON, the router automatically tries the next model in the chain.
 
-## What makes TunaFlow different
+## What makes TunaFlowAI different
 
-- **Event-driven by default**: TunaFlow reacts to meaningful work events instead of constantly polling or re-sending full chat history.
+- **Event-driven by default**: react to meaningful work events instead of constantly polling or re-sending full chat history.
 - **Compact state, not raw history**: raw events stay in storage; the model receives a small work snapshot.
 - **Model fallback chains**: route work through primary and fallback models with timeout, cooldown, health, and audit metadata.
-- **Permission-first tools**: every tool has a risk level, and medium/high-risk actions are approval-gated by default.
-- **Local-first MVP**: the current runtime is designed for local demos, experiments, and extension before production hardening.
+- **Permission-first tools**: every tool has a risk level; medium/high-risk actions are approval-gated by default.
+- **Approval execution flow**: pending actions can be approved or rejected through CLI or HTTP API.
+- **Tamper-evident audit log**: audit entries include a hash chain so local logs can be verified.
+- **Local-first MVP**: designed for local demos, experiments, and extension before production hardening.
 
 ## Current status
 
-This is an MVP starter repo. It is usable for local demos and early development, not production automation yet.
+This is an MVP runtime, not production automation yet. It is now ready for a stronger open-source `v0.2` direction: local gateway, approvals, model fallback, compact context, and auditable tool execution.
 
 Included now:
 
 - Local HTTP gateway
 - Event store
-- State engine
+- State engine and task state
 - Context compressor
-- Model router with fallback chain
+- Model router with fallback chains and circuit-breaker cooldown
 - Mock provider
 - OpenAI-compatible provider
 - Tool registry
 - Permission engine
-- Audit log
+- Approval flow
+- Tamper-evident audit log
 - Demo for fallback behavior
 - Node test suite
 
@@ -54,7 +55,7 @@ npm run demo
 npm run dev
 ```
 
-Then send an event:
+Send a chat event:
 
 ```bash
 curl -s http://127.0.0.1:8787/chat \
@@ -62,7 +63,7 @@ curl -s http://127.0.0.1:8787/chat \
   -d '{"text":"Watch my workspace and keep model usage efficient"}'
 ```
 
-Or send a terminal error event:
+Send a terminal error event:
 
 ```bash
 curl -s http://127.0.0.1:8787/events \
@@ -70,9 +71,24 @@ curl -s http://127.0.0.1:8787/events \
   -d '{"type":"terminal.output","priority":"high","text":"Error: cannot find variable plans"}'
 ```
 
+## CLI
+
+```text
+tunaflow init
+tunaflow dev
+tunaflow chat <text>
+tunaflow emit <type> <text>
+tunaflow status
+tunaflow approvals [pending|approved|rejected]
+tunaflow approve <approval_id> [note]
+tunaflow reject <approval_id> [note]
+tunaflow audit verify
+tunaflow check
+```
+
 ## Model fallback
 
-Edit `config/tunaflow.config.example.json`.
+Edit `config/tunaflow.config.example.json` or create `config/tunaflow.config.json`.
 
 ```json
 {
@@ -93,24 +109,37 @@ Edit `config/tunaflow.config.example.json`.
     }
   ],
   "chains": {
-    "default": ["primary-openai-compatible", "local-mock-fallback"]
+    "default": ["primary-openai-compatible", "local-mock-fallback"],
+    "strong": ["primary-openai-compatible", "local-mock-fallback"],
+    "cheap": ["local-mock-fallback"]
   }
 }
 ```
 
-If the first model fails, TunaFlow tries the next model. Failures, retries, cooldowns, and successes are recorded in `.tunaflow/audit.jsonl`.
+If the first model fails, TunaFlowAI tries the next model. Failures, retries, cooldowns, and successes are recorded in `.tunaflow/audit.jsonl`.
 
 ## Core API
 
 ```text
 GET  /health
 GET  /state
+GET  /runs
 GET  /events
 GET  /audit
+GET  /audit/verify
 GET  /models
 GET  /tools
+GET  /approvals?status=pending
 POST /events
 POST /chat
+POST /approvals/:id/approve
+POST /approvals/:id/reject
+```
+
+If `TUNAFLOW_API_TOKEN` is set, unsafe endpoints require:
+
+```text
+Authorization: Bearer $TUNAFLOW_API_TOKEN
 ```
 
 ## Example event
@@ -150,36 +179,18 @@ docs/
   ARCHITECTURE.md
   COMPARISON.md
   DEMO.md
+  PRODUCTIZATION.md
   ROADMAP.md
 ```
-
-## Use cases
-
-TunaFlow is a good starting point for:
-
-- local AI work assistants,
-- model fallback experiments,
-- token-efficient agent runtimes,
-- approval-gated automation,
-- event-driven monitoring for terminals, files, and future browser/workspace observers.
-
-TunaFlow is not production-ready yet. See `docs/ROADMAP.md` for the hardening plan.
 
 ## Safety defaults
 
 - `send_reply`, `read_file`, `list_files`, and `inspect_state` are low risk.
-- `write_file` and `edit_file` are medium risk and require approval by default.
+- `write_file`, `append_file`, and `edit_file` are medium risk and require approval by default.
 - `run_command` is high risk and requires approval by default.
 - Paths are restricted to the configured workspace.
-
-## Documentation
-
-- `docs/ARCHITECTURE.md` — runtime architecture and core loop
-- `docs/COMPARISON.md` — positioning against broader agent frameworks
-- `docs/DEMO.md` — local demo commands and expected behavior
-- `docs/ROADMAP.md` — planned milestones
-- `SECURITY.md` — current safety model and limitations
-- `CONTRIBUTING.md` — contribution guide
+- Shell commands use `execFile`, an allowlist, timeouts, and a sanitized environment.
+- Audit logs redact obvious secret patterns and are hash-chain verifiable.
 
 ## License
 

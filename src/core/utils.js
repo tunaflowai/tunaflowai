@@ -14,6 +14,15 @@ export async function ensureDir(dir) {
   await fs.mkdir(dir, { recursive: true });
 }
 
+export async function pathExists(file) {
+  try {
+    await fs.access(file);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function readJson(file, fallback = null) {
   try {
     const raw = await fs.readFile(file, 'utf8');
@@ -41,6 +50,16 @@ export async function readJsonl(file, limit = 100) {
     const raw = await fs.readFile(file, 'utf8');
     const lines = raw.split('\n').filter(Boolean);
     return lines.slice(Math.max(0, lines.length - limit)).map((line) => JSON.parse(line));
+  } catch (error) {
+    if (error && error.code === 'ENOENT') return [];
+    throw error;
+  }
+}
+
+export async function readAllJsonl(file) {
+  try {
+    const raw = await fs.readFile(file, 'utf8');
+    return raw.split('\n').filter(Boolean).map((line) => JSON.parse(line));
   } catch (error) {
     if (error && error.code === 'ENOENT') return [];
     throw error;
@@ -96,6 +115,8 @@ export function extractJsonObject(text) {
   try {
     return JSON.parse(trimmed);
   } catch (_) {
+    const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    if (fenced) return extractJsonObject(fenced[1]);
     const first = trimmed.indexOf('{');
     const last = trimmed.lastIndexOf('}');
     if (first === -1 || last === -1 || last <= first) {
@@ -114,6 +135,30 @@ export function normalizeBool(value, fallback = false) {
 export function redactSecrets(value) {
   const text = typeof value === 'string' ? value : JSON.stringify(value);
   return text
-    .replace(/(api[_-]?key|token|secret|password)(\"?\s*[:=]\s*\"?)[^\"\s,}]+/gi, '$1$2[REDACTED]')
-    .replace(/Bearer\s+[A-Za-z0-9._-]+/g, 'Bearer [REDACTED]');
+    .replace(/(api[_-]?key|token|secret|password)("?\s*[:=]\s*"?)[^"\s,}]+/gi, '$1$2[REDACTED]')
+    .replace(/Bearer\s+[A-Za-z0-9._-]+/g, 'Bearer [REDACTED]')
+    .replace(/sk-[A-Za-z0-9_-]{16,}/g, 'sk-[REDACTED]');
+}
+
+export function stableStringify(value) {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+  return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(',')}}`;
+}
+
+export function sha256(value) {
+  return crypto.createHash('sha256').update(typeof value === 'string' ? value : stableStringify(value)).digest('hex');
+}
+
+export function limitNumber(value, fallback, { min = 0, max = Number.MAX_SAFE_INTEGER } = {}) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.min(max, Math.max(min, number));
+}
+
+export function validateEvent(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Event body must be a JSON object');
+  if (!input.type || typeof input.type !== 'string') throw new Error('Event requires a string type');
+  if (input.text !== undefined && typeof input.text !== 'string') throw new Error('Event text must be a string when provided');
+  return input;
 }

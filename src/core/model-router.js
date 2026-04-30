@@ -14,7 +14,10 @@ export class ModelRouter {
       this.providers.set(model.name, createProvider(model));
       this.health.set(model.name, {
         failures: 0,
+        successes: 0,
+        totalAttempts: 0,
         lastError: null,
+        lastAttemptAt: null,
         nextRetryAt: 0,
         lastSuccessAt: null
       });
@@ -28,7 +31,12 @@ export class ModelRouter {
 
   getHealth() {
     const out = {};
-    for (const [name, health] of this.health.entries()) out[name] = { ...health };
+    for (const [name, health] of this.health.entries()) {
+      out[name] = {
+        ...health,
+        coolingDown: Boolean(health.nextRetryAt && Date.now() < health.nextRetryAt)
+      };
+    }
     return out;
   }
 
@@ -36,14 +44,22 @@ export class ModelRouter {
     const selectedChain = this.resolveChain(chain);
     const inputTokens = approximateTokens(messages);
     const maxInputTokens = this.config.tokenBudget.maxInputTokens;
+    const maxAttempts = this.config.tokenBudget.maxModelCallsPerEvent;
+
     if (inputTokens > maxInputTokens) {
       throw new Error(`Input budget exceeded: approx ${inputTokens} tokens > ${maxInputTokens}`);
     }
 
     const attempts = [];
     const errors = [];
+    let actualAttempts = 0;
 
     for (const modelName of selectedChain) {
+      if (actualAttempts >= maxAttempts) {
+        attempts.push({ model: modelName, skipped: true, reason: 'max-model-calls-exceeded', maxAttempts });
+        continue;
+      }
+
       const model = this.config.modelsByName.get(modelName);
       if (!model || model.enabled === false) {
         attempts.push({ model: modelName, skipped: true, reason: 'disabled-or-missing' });
@@ -59,30 +75,36 @@ export class ModelRouter {
       const provider = this.providers.get(modelName);
       const timeoutMs = model.timeoutMs || this.config.fallback.timeoutMs;
       const startedAt = Date.now();
+      actualAttempts += 1;
+      health.totalAttempts += 1;
+      health.lastAttemptAt = now();
 
       try {
-        await this.audit('model.attempt', { model: modelName, chain, taskType, inputTokens });
+        await this.audit('model.attempt', { model: modelName, chain, taskType, inputTokens, maxOutputTokens: maxOutputTokens || this.config.tokenBudget.maxOutputTokens });
         const result = await withTimeout(
           (signal) => provider.complete({
             messages,
             maxOutputTokens: maxOutputTokens || this.config.tokenBudget.maxOutputTokens,
             temperature,
-            signal
+            signal,
+            json
           }),
           timeoutMs,
           `model ${modelName}`
         );
 
+        const parsedJson = json ? extractJsonObject(result.content) : undefined;
         const output = {
           model: { name: modelName, provider: model.provider, model: model.model || model.name },
           content: result.content,
           usage: result.usage,
           attempts: [...attempts, { model: modelName, ok: true, latencyMs: Date.now() - startedAt }],
-          json: json ? extractJsonObject(result.content) : undefined,
+          json: parsedJson,
           raw: result.raw
         };
 
         health.failures = 0;
+        health.successes += 1;
         health.lastError = null;
         health.nextRetryAt = 0;
         health.lastSuccessAt = now();

@@ -5,7 +5,7 @@ export class OpenAICompatibleProvider {
     this.config = config;
   }
 
-  async complete({ messages = [], maxOutputTokens = 1200, temperature = 0.2, signal }) {
+  async complete({ messages = [], maxOutputTokens = 1200, temperature = 0.2, signal, json = false }) {
     const apiKey = this.config.apiKey || process.env[this.config.apiKeyEnv || 'OPENAI_API_KEY'];
     if (!apiKey) throw new Error(`Missing API key for ${this.config.name || this.config.model}`);
     if (!this.config.model || this.config.model === 'YOUR_MODEL_NAME') {
@@ -13,19 +13,24 @@ export class OpenAICompatibleProvider {
     }
 
     const baseUrl = (this.config.baseUrl || 'https://api.openai.com/v1').replace(/\/$/, '');
+    const body = {
+      model: this.config.model,
+      messages,
+      temperature,
+      max_tokens: maxOutputTokens
+    };
+
+    if (json && this.config.jsonMode !== false) body.response_format = { type: 'json_object' };
+
     const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
       signal,
       headers: {
         'content-type': 'application/json',
-        authorization: `Bearer ${apiKey}`
+        authorization: `Bearer ${apiKey}`,
+        ...(this.config.headers || {})
       },
-      body: JSON.stringify({
-        model: this.config.model,
-        messages,
-        temperature,
-        max_tokens: maxOutputTokens
-      })
+      body: JSON.stringify(body)
     });
 
     if (!response.ok) {
@@ -39,11 +44,17 @@ export class OpenAICompatibleProvider {
 
     return {
       content,
-      usage: data.usage || {
-        inputTokens: approximateTokens(messages),
-        outputTokens: approximateTokens(content)
-      },
+      usage: normalizeUsage(data.usage, messages, content),
       raw: data
     };
   }
+}
+
+function normalizeUsage(usage, messages, content) {
+  if (!usage) return { inputTokens: approximateTokens(messages), outputTokens: approximateTokens(content) };
+  return {
+    inputTokens: usage.prompt_tokens ?? usage.input_tokens ?? approximateTokens(messages),
+    outputTokens: usage.completion_tokens ?? usage.output_tokens ?? approximateTokens(content),
+    totalTokens: usage.total_tokens
+  };
 }

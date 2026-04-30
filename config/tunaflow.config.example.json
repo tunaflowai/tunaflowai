@@ -1,13 +1,22 @@
 {
   "runtime": {
-    "name": "TunaFlow",
+    "name": "TunaFlowAI",
     "workspace": ".",
     "dataDir": ".tunaflow",
-    "proactive": true
+    "proactive": true,
+    "verifyToolResults": true,
+    "maxActionsPerRun": 8
   },
   "server": {
     "host": "127.0.0.1",
-    "port": 8787
+    "port": 8787,
+    "apiTokenEnv": "TUNAFLOW_API_TOKEN",
+    "corsOrigin": "http://127.0.0.1:8787",
+    "bodyLimitBytes": 1048576
+  },
+  "context": {
+    "maxRecentEvents": 8,
+    "maxTextChars": 1800
   },
   "tokenBudget": {
     "maxInputTokens": 8000,
@@ -26,7 +35,8 @@
       "baseUrl": "https://api.openai.com/v1",
       "apiKeyEnv": "OPENAI_API_KEY",
       "model": "YOUR_MODEL_NAME",
-      "enabled": false
+      "enabled": false,
+      "jsonMode": true
     },
     {
       "name": "local-mock-fallback",
@@ -44,5 +54,10 @@
     "autoApproveMedium": false,
     "autoApproveHigh": false,
     "blockedTools": []
+  },
+  "tools": {
+    "commandAllowlist": ["node", "npm", "pnpm", "yarn", "git", "python", "python3"],
+    "defaultCommandTimeoutMs": 30000,
+    "maxCommandOutputChars": 6000
   }
 }

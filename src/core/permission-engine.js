@@ -1,9 +1,11 @@
+import fs from 'node:fs/promises';
 import path from 'node:path';
-import { createId, ensureDir, normalizeBool, now, writeJsonAtomic } from './utils.js';
+import { createId, ensureDir, normalizeBool, now, readJson, writeJsonAtomic } from './utils.js';
 
 export class PermissionEngine {
   constructor({ dataDir, config = {}, auditLog = null }) {
     this.dataDir = dataDir;
+    this.approvalsDir = path.join(dataDir, 'approvals');
     this.config = {
       autoApproveMedium: normalizeBool(process.env.TUNAFLOW_AUTO_APPROVE_MEDIUM, config.autoApproveMedium || false),
       autoApproveHigh: normalizeBool(process.env.TUNAFLOW_AUTO_APPROVE_HIGH, config.autoApproveHigh || false),
@@ -13,7 +15,7 @@ export class PermissionEngine {
   }
 
   async init() {
-    await ensureDir(path.join(this.dataDir, 'approvals'));
+    await ensureDir(this.approvalsDir);
   }
 
   async evaluate({ tool, action, event, runId }) {
@@ -25,6 +27,7 @@ export class PermissionEngine {
     if (tool.risk === 'low') return { allowed: true, requiresApproval: false, reason: 'Low risk tool' };
     if (tool.risk === 'medium' && this.config.autoApproveMedium) return { allowed: true, requiresApproval: false, reason: 'Medium risk auto-approved by config' };
     if (tool.risk === 'high' && this.config.autoApproveHigh) return { allowed: true, requiresApproval: false, reason: 'High risk auto-approved by config' };
+    if (tool.risk === 'critical') return { allowed: false, requiresApproval: false, reason: 'Critical risk tools are blocked by default' };
 
     const approval = await this.requestApproval({ tool, action, event, runId, reason: `${tool.risk} risk tool requires approval` });
     return { allowed: false, requiresApproval: true, reason: approval.reason, approvalId: approval.id, approvalFile: approval.file };
@@ -40,11 +43,56 @@ export class PermissionEngine {
       reason,
       action,
       sourceEventId: event?.id,
-      createdAt: now()
+      createdAt: now(),
+      decidedAt: null,
+      decision: null
     };
-    const file = path.join(this.dataDir, 'approvals', `${approval.id}.json`);
+    const file = this.approvalFile(approval.id);
     await writeJsonAtomic(file, approval);
     if (this.auditLog) await this.auditLog.record('approval.requested', { ...approval, file });
     return { ...approval, file };
+  }
+
+  approvalFile(id) {
+    return path.join(this.approvalsDir, `${id}.json`);
+  }
+
+  async getApproval(id) {
+    return readJson(this.approvalFile(id), null);
+  }
+
+  async listApprovals({ status = null, limit = 100 } = {}) {
+    await ensureDir(this.approvalsDir);
+    const entries = await fs.readdir(this.approvalsDir, { withFileTypes: true });
+    const approvals = [];
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith('.json')) continue;
+      const approval = await readJson(path.join(this.approvalsDir, entry.name), null);
+      if (!approval) continue;
+      if (status && approval.status !== status) continue;
+      approvals.push(approval);
+    }
+    approvals.sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+    return approvals.slice(-limit);
+  }
+
+  async decide(id, decision, metadata = {}) {
+    if (!['approved', 'rejected'].includes(decision)) throw new Error('Decision must be approved or rejected');
+    const approval = await this.getApproval(id);
+    if (!approval) throw new Error(`Approval not found: ${id}`);
+    if (approval.status !== 'pending') throw new Error(`Approval is already ${approval.status}`);
+
+    const updated = {
+      ...approval,
+      status: decision,
+      decision: {
+        by: metadata.by || 'local-user',
+        note: metadata.note || null
+      },
+      decidedAt: now()
+    };
+    await writeJsonAtomic(this.approvalFile(id), updated);
+    if (this.auditLog) await this.auditLog.record(`approval.${decision}`, { id, tool: approval.tool, runId: approval.runId, metadata });
+    return updated;
   }
 }

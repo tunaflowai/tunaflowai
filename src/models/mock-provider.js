@@ -15,19 +15,28 @@ export class MockProvider {
     }
     if (behavior === 'timeout') await sleep((this.config.timeoutMs || 20000) + 1000);
 
+    if (this.config.response) {
+      const content = typeof this.config.response === 'string' ? this.config.response : JSON.stringify(this.config.response);
+      return {
+        content,
+        usage: { inputTokens: approximateTokens(messages), outputTokens: approximateTokens(content) },
+        raw: { provider: 'mock', behavior, customResponse: true }
+      };
+    }
+
     const last = messages[messages.length - 1]?.content || '';
     const lower = last.toLowerCase();
     const actions = [];
     let summary = 'TunaFlow observed the event and kept the state updated.';
-    const plan = ['Observe the event', 'Update work state', 'Act only when needed'];
+    const plan = ['Observe the event', 'Update compact work state', 'Act only when needed'];
 
     if (lower.includes('terminal.output') && /(error|failed|exception|traceback|cannot|not found)/i.test(last)) {
-      summary = 'A terminal error was detected. TunaFlow should inspect the active state and propose a next action.';
+      summary = 'A terminal error was detected. TunaFlow should inspect state and propose a safe next action.';
       plan.push('Inspect current state', 'Ask for approval before risky changes');
       actions.push({
         tool: 'send_reply',
         args: {
-          message: 'A terminal error was detected. I saved the compact context and can help investigate with token-efficient next steps.'
+          message: 'Terminal error detected. I saved the context and can help investigate with a token-efficient workflow.'
         }
       });
     } else if (lower.includes('user.message') || lower.includes('chat.message')) {
@@ -35,7 +44,7 @@ export class MockProvider {
       actions.push({
         tool: 'send_reply',
         args: {
-          message: 'Instruction received. I will watch important events, keep the work state compact, and call models only when needed.'
+          message: 'Instruction received. I will monitor meaningful events, keep compact work state, and call models only when needed.'
         }
       });
     }

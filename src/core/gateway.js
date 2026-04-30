@@ -1,29 +1,47 @@
 import http from 'node:http';
+import { limitNumber } from './utils.js';
 
-export function createGateway({ runtime, eventStore, stateEngine, auditLog, modelRouter, toolRegistry, host = '127.0.0.1', port = 8787 }) {
+export function createGateway({ runtime, eventStore, stateEngine, auditLog, modelRouter, toolRegistry, permissionEngine, host = '127.0.0.1', port = 8787, config = {} }) {
+  const serverConfig = config.server || {};
+  const apiToken = serverConfig.apiToken || process.env[serverConfig.apiTokenEnv || 'TUNAFLOW_API_TOKEN'];
+  const bodyLimitBytes = serverConfig.bodyLimitBytes || 1024 * 1024;
+  const corsOrigin = serverConfig.corsOrigin || 'http://127.0.0.1:8787';
+
   const server = http.createServer(async (req, res) => {
     try {
-      setCors(res);
+      setCors(res, corsOrigin);
       if (req.method === 'OPTIONS') return sendJson(res, 204, {});
 
       const url = new URL(req.url, `http://${req.headers.host || `${host}:${port}`}`);
+      if (apiToken && !isPublicEndpoint(req.method, url.pathname) && !isAuthorized(req, apiToken)) {
+        return sendJson(res, 401, { error: 'Unauthorized' });
+      }
 
       if (req.method === 'GET' && url.pathname === '/health') {
-        return sendJson(res, 200, { ok: true, name: 'TunaFlow', models: modelRouter.getHealth() });
+        return sendJson(res, 200, { ok: true, name: 'TunaFlowAI', models: modelRouter.getHealth() });
       }
 
       if (req.method === 'GET' && url.pathname === '/state') {
         return sendJson(res, 200, stateEngine.getState());
       }
 
+      if (req.method === 'GET' && url.pathname === '/runs') {
+        const limit = limitNumber(url.searchParams.get('limit'), 50, { min: 1, max: 500 });
+        return sendJson(res, 200, stateEngine.getRuns(limit));
+      }
+
       if (req.method === 'GET' && url.pathname === '/events') {
-        const limit = Number(url.searchParams.get('limit') || 100);
+        const limit = limitNumber(url.searchParams.get('limit'), 100, { min: 1, max: 500 });
         return sendJson(res, 200, await eventStore.recent(limit));
       }
 
       if (req.method === 'GET' && url.pathname === '/audit') {
-        const limit = Number(url.searchParams.get('limit') || 100);
+        const limit = limitNumber(url.searchParams.get('limit'), 100, { min: 1, max: 500 });
         return sendJson(res, 200, await auditLog.recent(limit));
+      }
+
+      if (req.method === 'GET' && url.pathname === '/audit/verify') {
+        return sendJson(res, 200, await auditLog.verify());
       }
 
       if (req.method === 'GET' && url.pathname === '/models') {
@@ -34,21 +52,36 @@ export function createGateway({ runtime, eventStore, stateEngine, auditLog, mode
         return sendJson(res, 200, toolRegistry.list());
       }
 
+      if (req.method === 'GET' && url.pathname === '/approvals') {
+        const status = url.searchParams.get('status');
+        const limit = limitNumber(url.searchParams.get('limit'), 100, { min: 1, max: 500 });
+        return sendJson(res, 200, await permissionEngine.listApprovals({ status, limit }));
+      }
+
+      const approvalMatch = url.pathname.match(/^\/approvals\/([^/]+)\/(approve|reject)$/);
+      if (req.method === 'POST' && approvalMatch) {
+        const [, approvalId, action] = approvalMatch;
+        const body = await readBody(req, bodyLimitBytes);
+        const result = await runtime.resolveApproval(approvalId, action === 'approve' ? 'approved' : 'rejected', body || {});
+        return sendJson(res, 200, result);
+      }
+
       if (req.method === 'POST' && url.pathname === '/events') {
-        const body = await readBody(req);
+        const body = await readBody(req, bodyLimitBytes);
         const result = await runtime.handleEvent(body);
         return sendJson(res, 200, result);
       }
 
       if (req.method === 'POST' && url.pathname === '/chat') {
-        const body = await readBody(req);
+        const body = await readBody(req, bodyLimitBytes);
         const result = await runtime.handleEvent({ type: 'user.message', text: body.text || body.message || '', payload: body });
         return sendJson(res, 200, result);
       }
 
       return sendJson(res, 404, { error: 'Not found' });
     } catch (error) {
-      return sendJson(res, 500, { error: error.message, stack: process.env.NODE_ENV === 'production' ? undefined : error.stack });
+      const status = /JSON|body|Event requires|Event body/.test(error.message) ? 400 : 500;
+      return sendJson(res, status, { error: error.message, stack: process.env.NODE_ENV === 'production' ? undefined : error.stack });
     }
   });
 
@@ -64,15 +97,29 @@ export function createGateway({ runtime, eventStore, stateEngine, auditLog, mode
   };
 }
 
-function setCors(res) {
-  res.setHeader('access-control-allow-origin', '*');
-  res.setHeader('access-control-allow-methods', 'GET,POST,OPTIONS');
-  res.setHeader('access-control-allow-headers', 'content-type');
+function isPublicEndpoint(method, pathname) {
+  return method === 'GET' && pathname === '/health';
 }
 
-async function readBody(req) {
+function isAuthorized(req, token) {
+  const auth = req.headers.authorization || '';
+  return auth === `Bearer ${token}`;
+}
+
+function setCors(res, origin) {
+  res.setHeader('access-control-allow-origin', origin);
+  res.setHeader('access-control-allow-methods', 'GET,POST,OPTIONS');
+  res.setHeader('access-control-allow-headers', 'content-type,authorization');
+}
+
+async function readBody(req, limitBytes) {
   const chunks = [];
-  for await (const chunk of req) chunks.push(chunk);
+  let size = 0;
+  for await (const chunk of req) {
+    size += chunk.length;
+    if (size > limitBytes) throw new Error(`Request body exceeds limit of ${limitBytes} bytes`);
+    chunks.push(chunk);
+  }
   const raw = Buffer.concat(chunks).toString('utf8');
   if (!raw) return {};
   return JSON.parse(raw);

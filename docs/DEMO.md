@@ -1,28 +1,26 @@
-# Demo Guide
+# TunaFlowAI Demo
 
-This guide shows the current MVP behavior.
-
-## Run tests
-
-```bash
-npm test
-```
-
-## Run the fallback demo
+Run the fallback demo:
 
 ```bash
 npm run demo
 ```
 
-The demo config intentionally lets the first mock model fail, then verifies that TunaFlow falls back to the next provider in the chain.
+Expected behavior:
 
-## Start the local gateway
+1. The primary mock model fails intentionally.
+2. The fallback mock model succeeds.
+3. TunaFlowAI detects the terminal error event.
+4. TunaFlowAI writes a safe `send_reply` action.
+5. Audit logs are written to `.tunaflow-demo/audit.jsonl`.
+
+Run the local gateway:
 
 ```bash
 npm run dev
 ```
 
-Then send a chat event:
+Send a chat event:
 
 ```bash
 curl -s http://127.0.0.1:8787/chat \
@@ -30,18 +28,14 @@ curl -s http://127.0.0.1:8787/chat \
   -d '{"text":"Watch my workspace and keep model usage efficient"}'
 ```
 
-Send a terminal error event:
+List pending approvals:
 
 ```bash
-curl -s http://127.0.0.1:8787/events \
-  -H 'content-type: application/json' \
-  -d '{"type":"terminal.output","priority":"high","text":"Error: cannot find variable plans"}'
+tunaflow approvals pending
 ```
 
-Inspect runtime state:
+Verify audit logs:
 
 ```bash
-curl -s http://127.0.0.1:8787/state
-curl -s http://127.0.0.1:8787/models
-curl -s http://127.0.0.1:8787/audit
+tunaflow audit verify
 ```

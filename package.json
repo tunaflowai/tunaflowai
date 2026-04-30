@@ -1,7 +1,7 @@
 {
   "name": "tunaflow",
-  "version": "0.1.0",
-  "description": "TunaFlowAI: an event-driven, token-efficient work operating agent with model fallback chains.",
+  "version": "0.2.0-alpha.0",
+  "description": "TunaFlowAI: an event-driven, token-efficient work operating agent with model fallback chains, approvals, and tamper-evident audit logs.",
   "type": "module",
   "private": false,
   "license": "MIT",
@@ -12,8 +12,9 @@
     "start": "node src/cli.js dev",
     "dev": "node src/cli.js dev",
     "demo": "node examples/demo.js",
-    "test": "node --test tests/*.test.js",
-    "check": "node src/cli.js check"
+    "test": "node scripts/smoke-test.js",
+    "check": "node src/cli.js check",
+    "doctor": "node src/cli.js doctor"
   },
   "engines": {
     "node": ">=22.0.0"
@@ -26,9 +27,11 @@
     "open-source",
     "agent-runtime",
     "event-driven",
-    "token-efficient"
+    "token-efficient",
+    "approval-workflow",
+    "audit-log"
   ],
-  "author": "",
+  "author": "TunaFlowAI contributors",
   "dependencies": {},
   "devDependencies": {}
 }
