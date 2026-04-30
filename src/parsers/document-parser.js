@@ -13,7 +13,7 @@ export class ProductionDocumentParser {
     if (['.txt', '.md', '.csv', '.json', '.log'].includes(ext)) return this.parseText(filePath, options);
     if (ext === '.xlsx' || ext === '.xls') return this.parseXlsx(filePath, options);
     if (ext === '.pdf') return this.parsePdf(filePath, options);
-    throw new Error(`Format dokumen belum didukung: ${ext}`);
+    throw new Error(`Unsupported document format: ${ext}`);
   }
 
   async parseText(filePath, options = {}) {
@@ -47,5 +47,5 @@ export class ProductionDocumentParser {
 
 async function optionalImport(name) {
   try { return (await import(name)).default || await import(name); }
-  catch (_) { throw new Error(`Parser produksi membutuhkan paket opsional '${name}'. Jalankan: npm install ${name}`); }
+  catch (_) { throw new Error(`Production parser requires optional package '${name}'. Run: npm install ${name}`); }
 }

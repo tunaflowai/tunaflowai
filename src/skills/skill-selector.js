@@ -67,11 +67,11 @@ function scoreSkill(skill, event, state, persona) {
   score += keywordScore(haystack, skillProfile, ['customer', 'support', 'reply', 'email', 'client'], ['support', 'draft', 'customer'], 8);
   score += keywordScore(haystack, skillProfile, ['browser', 'url', 'web', 'page', 'research'], ['browser', 'research'], 8);
   score += keywordScore(haystack, skillProfile, ['seo', 'ads', 'ad ', 'ctr', 'campaign', 'keyword', 'marketing', 'google trends'], ['digital', 'marketer', 'seo', 'ad', 'keyword'], 12);
-  score += keywordScore(haystack, skillProfile, ['cv', 'resume', 'candidate', 'pelamar', 'lamaran', 'interview', 'recruit', 'hrd', 'talent'], ['talent', 'resume', 'candidate', 'interview', 'hr'], 12);
-  score += keywordScore(haystack, skillProfile, ['csv', 'excel', 'spreadsheet', 'anomaly', 'chart', 'graph', 'grafik', 'data analyst', 'laporan data'], ['data', 'analyst', 'csv', 'anomaly', 'chart'], 12);
-  score += keywordScore(haystack, skillProfile, ['calendar', 'meeting', 'schedule', 'jadwal', 'conflict', 'ticket', 'travel'], ['secretary', 'assistant', 'calendar', 'meeting', 'ticket'], 12);
+  score += keywordScore(haystack, skillProfile, ['cv', 'resume', 'candidate', 'applicant', 'application', 'interview', 'recruit', 'hrd', 'talent'], ['talent', 'resume', 'candidate', 'interview', 'hr'], 12);
+  score += keywordScore(haystack, skillProfile, ['csv', 'excel', 'spreadsheet', 'anomaly', 'chart', 'graph', 'graph', 'data analyst', 'data report'], ['data', 'analyst', 'csv', 'anomaly', 'chart'], 12);
+  score += keywordScore(haystack, skillProfile, ['calendar', 'meeting', 'schedule', 'schedule', 'conflict', 'ticket', 'travel'], ['secretary', 'assistant', 'calendar', 'meeting', 'ticket'], 12);
   score += keywordScore(haystack, skillProfile, ['project', 'sprint', 'scrum', 'jira', 'trello', 'deadline', 'overdue', 'standup'], ['project', 'scrum', 'sprint', 'overdue'], 12);
-  score += keywordScore(haystack, skillProfile, ['translate', 'translator', 'terjemah', 'proofread', 'typo', 'markdown', 'copywriter', 'blog'], ['translator', 'copywriter', 'proofread', 'markdown'], 12);
+  score += keywordScore(haystack, skillProfile, ['translate', 'translator', 'translation', 'proofread', 'typo', 'markdown', 'copywriter', 'blog'], ['translator', 'copywriter', 'proofread', 'markdown'], 12);
 
   // Nudge by matching distinctive words from skill names/jobs without letting generic words dominate.
   for (const token of distinctiveTokens(skillProfile)) {

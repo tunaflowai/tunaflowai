@@ -47,7 +47,7 @@ export class PlaywrightBrowserDriver {
     else if (action === 'type') await page.type(selector, String(text ?? value ?? ''), { timeout: this.config.timeoutMs });
     else if (action === 'press') await page.press(selector, String(value || 'Enter'), { timeout: this.config.timeoutMs });
     else if (action === 'screenshot') return { ok: true, path: await page.screenshot({ path: value || undefined, fullPage: true }) };
-    else throw new Error(`Aksi Playwright tidak dikenal: ${action}`);
+    else throw new Error(`Unknown Playwright action: ${action}`);
     if (this.auditLog) await this.auditLog.record('browser.playwright.act', { action, selector, url: page.url() });
     return { ok: true, action, url: page.url() };
   }
@@ -62,6 +62,6 @@ export class PlaywrightBrowserDriver {
 export async function optionalImport(name) {
   try { return await import(name); }
   catch (error) {
-    throw new Error(`Paket opsional '${name}' belum terpasang. Jalankan: npm install ${name}`);
+    throw new Error(`Optional package '${name}' is not installed. Run: npm install ${name}`);
   }
 }

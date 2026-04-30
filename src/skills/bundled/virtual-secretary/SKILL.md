@@ -6,7 +6,7 @@ triggers:
   - calendar-api-watcher
   - schedule
   - meeting
-  - jadwal
+  - schedule
   - ticket
   - travel
   - user.message

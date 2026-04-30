@@ -5,7 +5,7 @@ description: Screen resumes, score candidates against criteria, and draft interv
 triggers:
   - email-inbox-watcher
   - email.received
-  - lamaran pekerjaan
+  - job application
   - resume
   - cv
   - candidate

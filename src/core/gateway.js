@@ -36,7 +36,7 @@ export function createGateway({ runtime, eventStore, stateEngine, auditLog, mode
       }
 
       if (apiToken || authManager?.enabled?.()) {
-        if (!isPublicEndpoint(req.method, url.pathname) && !isAuthorized(req, apiToken, authManager)) return sendJson(res, 401, { error: 'Tidak terotorisasi' });
+        if (!isPublicEndpoint(req.method, url.pathname) && !isAuthorized(req, apiToken, authManager)) return sendJson(res, 401, { error: 'Unauthorized' });
       }
 
       if (req.method === 'GET' && url.pathname === '/health') return sendJson(res, 200, { ok: true, name: 'TunaFlowAI', models: modelRouter.getHealth() });
@@ -117,7 +117,7 @@ export function createGateway({ runtime, eventStore, stateEngine, auditLog, mode
         return sendJson(res, 200, result);
       }
 
-      return sendJson(res, 404, { error: 'Tidak ditemukan' });
+      return sendJson(res, 404, { error: 'Not found' });
     } catch (error) {
       const status = /JSON|body|Event requires|Event body|exceeds limit|Unauthorized|Invalid/.test(error.message) ? 400 : 500;
       return sendJson(res, status, { error: error.message, stack: process.env.NODE_ENV === 'production' ? undefined : error.stack });

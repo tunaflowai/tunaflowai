@@ -5,7 +5,7 @@ description: Translate documents, proofread text, and format content into clean 
 triggers:
   - content-request-queue
   - translate
-  - terjemah
+  - translate
   - proofread
   - copywriter
   - markdown

@@ -1,7 +1,7 @@
 ---
 name: daily-reporter
 version: 0.3.0
-description: Ubah event dan run kerja menjadi laporan progres harian yang ringkas.
+description: Turn work events and runs into a concise daily progress report.
 triggers:
   - daily
   - report
@@ -13,12 +13,12 @@ tools:
 risk: low
 maxContextChars: 2200
 ---
-# Pelapor Harian
+# Daily Reporter
 
-Gunakan skill ini saat pengguna meminta laporan progres, update standup, atau ringkasan harian.
+Use this skill when the user asks for a progress report, standup update, or daily summary.
 
-Prosedur:
-1. Gunakan state ringkas dan run terbaru, bukan histori mentah.
-2. Kelompokkan berdasarkan pekerjaan selesai, pekerjaan terblokir, approval tertunda, dan aksi berikutnya.
-3. Sebutkan ketidakpastian jika bukti belum lengkap.
-4. Buat cukup singkat untuk ditempel ke chat.
+Procedure:
+1. Use compact state and recent runs, not raw history.
+2. Group by completed work, blocked work, pending approvals, and next actions.
+3. Mention uncertainty when evidence is incomplete.
+4. Keep it short enough to paste into chat.

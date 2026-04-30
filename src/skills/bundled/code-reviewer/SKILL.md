@@ -1,7 +1,7 @@
 ---
 name: code-reviewer
 version: 0.3.0
-description: Tinjau perubahan kode untuk kebenaran, keamanan, dan kemudahan perawatan.
+description: Review code changes for correctness, safety, and maintainability.
 triggers:
   - review
   - pull request
@@ -15,16 +15,16 @@ tools:
 risk: low
 maxContextChars: 2800
 ---
-# Peninjau Kode
+# Code Reviewer
 
-Gunakan skill ini saat diminta meninjau patch, pull request, atau perubahan kode lokal.
+Use this skill when asked to review a patch, pull request, or local code change.
 
-Prosedur:
-1. Identifikasi file yang berubah terlebih dulu.
-2. Baca hanya file relevan atau cuplikan terfokus.
-3. Cari bug kebenaran, risiko keamanan, kerusakan API, dan test yang kurang.
-4. Pisahkan isu pemblokir dari saran.
-5. Jangan edit file kecuali diminta eksplisit.
-6. Jika verifikasi diperlukan, minta approval sebelum menjalankan command.
+Procedure:
+1. Identify changed files first.
+2. Read only relevant files or focused snippets.
+3. Look for correctness bugs, security risks, API breakage, and missing tests.
+4. Separate blocking issues from suggestions.
+5. Do not edit files unless explicitly asked.
+6. If verification is needed, request approval before running commands.
 
-Output harus ringkas dan berorientasi aksi.
+Output should be concise and action-oriented.

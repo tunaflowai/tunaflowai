@@ -1,26 +1,273 @@
-# Panduan TunaFlowAI
+# TunaFlowAI
 
-TunaFlowAI adalah agen operasi kerja lokal yang membantu menerima event, memilih model, memakai skill, menjalankan tool dengan approval, dan menyimpan audit log. Produk ini dibuat lokal-first: aman secara bawaan, hemat token, dan mudah dikembangkan.
+TunaFlowAI (package name: `tunaflow`) is an open-source, event-driven AI work operating agent for building safe, token-efficient automation.
 
-## Cara cepat
+The core loop is:
+
+```text
+Observe real work
+  -> keep compact state
+  -> initialize the active persona
+  -> call models only when needed
+  -> fallback if a model fails
+  -> select relevant job skills
+  -> execute tools with permission
+  -> verify and audit
+```
+
+## What makes TunaFlowAI different
+
+- **Persona-based initialization**: users can switch the active persona at runtime, such as `operator`, `anna`, `software-engineer`, `code-reviewer`, `system-operator`, `customer-support`, `research-analyst`, or `product-manager`.
+- **Event-driven by default**: TunaFlowAI reacts to meaningful work events instead of constantly polling or re-sending full chat history.
+- **Compact state, not raw history**: raw events stay in storage; models receive a small work snapshot.
+- **Provider-aware model fallback**: route work through OpenAI, Gemini, Anthropic, Qwen, MiniMax, DeepSeek, Kimi/Moonshot, OpenRouter, Ollama, and other OpenAI-compatible endpoints.
+- **Installable job skills**: job skill packs can be loaded from bundled skills, workspace folders, user folders, custom paths, or acquired into `.tunaflow/skills/acquired`.
+- **Channel adapter layer**: webhook, Telegram, Discord, Slack, and WhatsApp Cloud foundations.
+- **Permission-first tools**: every tool has a risk level; medium/high-risk actions are approval-gated by default.
+- **Localhost dashboard**: open `http://127.0.0.1:8787/dashboard` to inspect state, logs, runs, approvals, personas, skills, models, and channels.
+- **Tamper-evident audit logs**: important events, model attempts, approvals, and tool results can be verified.
+
+## Current status
+
+This is a `v0.5.0-alpha` production-maturity foundation. It is usable for local demos, experiments, and early extension work, not production autonomous automation yet.
+
+Included now:
+
+- Local HTTP gateway
+- Localhost dashboard GUI
+- Event store
+- State engine
+- Context compressor
+- Agent identity manager with user-defined name and personality
+- Persona manager with bundled personas and runtime switching
+- Task graph and per-task budget manager
+- Policy-as-code engine
+- Secrets vault
+- Sandbox runner for `run_command`
+- Browser operator foundation
+- Model router with fallback chain
+- Provider registry and model catalog
+- Native Gemini provider
+- Native Anthropic provider
+- OpenAI-compatible provider presets for Qwen, MiniMax, DeepSeek, Kimi/Moonshot, OpenRouter, Ollama, and more
+- Skill loader/selector with bundled and acquired job skills
+- Channel registry and outbound router
+- Webhook, Telegram, Discord, Slack, and WhatsApp Cloud adapter foundations with signature verification hooks
+- Market, webhook, schedule, and server-health observer foundations
+- Finance, F&B, content, back-office, customer-service, and DevOps job skills
+- Permission engine and approval execution
+- Tool registry
+- Tamper-evident audit log
+- Demo and test suite
+
+## Requirements
+
+- Node.js 22+
+- No npm dependencies for the current runtime foundation
+
+## Quick start
 
 ```bash
-npm install
 npm test
-npm run check
+npm run demo
 npm run dev
 ```
 
-## Prinsip produk
+Open the dashboard:
 
-- Lokal-first dan aman secara bawaan.
-- Tindakan berisiko wajib melewati approval.
-- Secret tidak boleh masuk Git.
-- Audit log harus bisa diverifikasi.
-- Integrasi produksi sebaiknya diaktifkan bertahap.
+```text
+http://127.0.0.1:8787/dashboard
+```
+
+Send a chat event:
+
+```bash
+curl -s http://127.0.0.1:8787/chat \
+  -H 'content-type: application/json' \
+  -d '{"text":"Watch my workspace and keep model usage efficient"}'
+```
+
+Send a terminal error event:
+
+```bash
+curl -s http://127.0.0.1:8787/events \
+  -H 'content-type: application/json' \
+  -d '{"type":"terminal.output","priority":"high","text":"Error: cannot find variable plans"}'
+```
+
+## Personas
+
+List personas:
+
+```bash
+node src/cli.js personas
+```
+
+Show the active persona:
+
+```bash
+node src/cli.js persona active
+```
+
+Switch persona:
+
+```bash
+node src/cli.js persona set anna
+node src/cli.js persona set software-engineer
+node src/cli.js persona set customer-support
+```
+
+The active persona influences:
+
+- system prompt initialization,
+- model chain preference,
+- default job skill selection,
+- communication style,
+- risk posture and autonomy hints.
+
+Persona instructions cannot override the permission engine, tool policy, or safety rules.
+
+## Agent identity and personality
+
+Users can name the agent and customize its personality independently from persona selection.
+
+```bash
+node src/cli.js identity show
+node src/cli.js identity name Anna
+node src/cli.js identity set personality.tone="warm, precise, proactive"
+node src/cli.js identity reset
+```
+
+Identity controls how the agent introduces itself and communicates. It does not grant tool permissions, bypass approval rules, or unlock secrets.
+
+## Production-maturity foundations in v0.5
+
+This pack adds foundations for:
+
+- sandboxed command execution,
+- provider HTTP integration tests,
+- signed channel webhooks,
+- trusted skill signing,
+- dashboard session authentication,
+- task graph and per-task budgets,
+- browser operator tools with approval gates,
+- local encrypted secrets,
+- policy-as-code,
+- domain job skills for finance, F&B, content, back-office, customer service, and DevOps.
+
+## Job skills
+
+List skills:
+
+```bash
+node src/cli.js skills
+```
+
+Create a starter job skill:
+
+```bash
+node src/cli.js skills create receipt-auditor
+```
+
+Acquire a local skill pack:
+
+```bash
+node src/cli.js skills acquire ./external-skills/receipt-auditor
+```
+
+A skill pack is a folder containing `SKILL.md`. Skills are procedures; they do not grant tool permissions.
+
+## Dashboard
+
+Start TunaFlowAI:
+
+```bash
+npm run dev
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8787/dashboard
+```
+
+The dashboard shows:
+
+- active persona and persona switcher,
+- loaded/acquired job skills,
+- approval queue,
+- model health and fallback attempts,
+- compact state,
+- recent runs,
+- recent events,
+- audit log.
+
+If `TUNAFLOW_API_TOKEN` is set, paste it into the dashboard token field.
+
+## Core API
+
+```text
+GET  /
+GET  /dashboard
+GET  /health
+GET  /overview
+GET  /state
+GET  /runs
+GET  /events
+GET  /audit
+GET  /audit/verify
+GET  /models
+GET  /models/catalog
+GET  /tools
+GET  /skills
+GET  /skills/acquired
+GET  /personas
+GET  /personas/active
+GET  /personas/current
+GET  /channels
+GET  /approvals
+POST /personas/:name/activate
+POST /personas/:id/skills/acquire
+POST /personas/:id/skills/release
+POST /skills/acquire
+POST /skills/reload
+POST /approvals/:id/approve
+POST /approvals/:id/reject
+POST /events
+POST /chat
+POST /channels/:id/webhook
+```
+
+Set `TUNAFLOW_API_TOKEN` to protect unsafe endpoints with `Authorization: Bearer <token>`.
+
+## Safety defaults
+
+- `send_reply`, `read_file`, `list_files`, and `inspect_state` are low risk.
+- `write_file`, `edit_file`, and `append_file` are medium risk and require approval by default.
+- `run_command` is high risk and requires approval by default.
+- Paths are restricted to the configured workspace.
+- Personas and skills cannot grant permissions.
+- Remote skill installation is intentionally disabled in this dependency-free alpha. Review skills locally before acquiring them.
+
+## Documentation
+
+- `docs/ARCHITECTURE.md` - runtime architecture and core loop
+- `docs/PERSONAS.md` - persona-based initialization and switching
+- `docs/SKILL_JOBS.md` - installable job skill packs
+- `docs/DASHBOARD.md` - localhost GUI usage
+- `docs/MODELS.md` - model provider setup
+- `docs/CHANNELS.md` - channel adapter foundations
+- `docs/ROADMAP.md` - planned milestones
+- `SECURITY.md` - current safety model and limitations
+- `CONTRIBUTING.md` - contribution guide
+
+## License
+
+MIT
+
 ## GitHub Codespaces
 
-TunaFlowAI bisa dijalankan di Codespaces. Cara cepat:
+TunaFlowAI can run in GitHub Codespaces. Quick start:
 
 ```bash
 npm install
@@ -28,5 +275,4 @@ npm test
 npm start
 ```
 
-Lalu buka tab **Ports** dan klik **Open in Browser** pada port `8787` untuk membuka dasbor. Panduan lengkap ada di `docs/CODESPACES.md`.
-
+Then open the **Ports** tab and click **Open in Browser** on port `8787` to open the dashboard. See `docs/CODESPACES.md` for the full guide.

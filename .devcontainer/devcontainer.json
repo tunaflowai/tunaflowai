@@ -1,7 +1,9 @@
 {
   "name": "TunaFlowAI",
   "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
-  "forwardPorts": [8787],
+  "forwardPorts": [
+    8787
+  ],
   "portsAttributes": {
     "8787": {
       "label": "TunaFlowAI Dashboard",
@@ -9,10 +11,12 @@
     }
   },
   "postCreateCommand": "npm install && npm test",
-  "postAttachCommand": "echo 'Jalankan: npm start lalu buka tab Ports → TunaFlowAI Dashboard → Open in Browser'",
+  "postAttachCommand": "echo 'Run: npm start, then open Ports \u2192 TunaFlowAI Dashboard \u2192 Open in Browser'",
   "customizations": {
     "vscode": {
-      "extensions": ["ms-vscode.js-debug-nightly"]
+      "extensions": [
+        "ms-vscode.js-debug-nightly"
+      ]
     }
   }
 }

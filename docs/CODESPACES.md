@@ -1,68 +1,68 @@
-# Panduan GitHub Codespaces
+# GitHub Codespaces Guide
 
-Panduan ini untuk menjalankan TunaFlowAI langsung dari GitHub Codespaces.
+Use this guide to run TunaFlowAI directly inside GitHub Codespaces.
 
-## Cara cepat
+## Quick start
 
-1. Buka repo di GitHub.
-2. Klik **Code → Codespaces → Create codespace on main**.
-3. Tunggu `postCreateCommand` selesai menjalankan `npm install` dan `npm test`.
-4. Jalankan:
+1. Open the repository on GitHub.
+2. Click **Code → Codespaces → Create codespace on main**.
+3. Wait for `postCreateCommand` to finish `npm install` and `npm test`.
+4. Start the gateway:
 
 ```bash
 npm start
 ```
 
-5. Buka tab **Ports** di Codespaces.
-6. Pada port `8787` dengan label **TunaFlowAI Dashboard**, klik **Open in Browser**.
-7. Jika perlu akses dari luar tab Codespaces, ubah visibility port menjadi **Public** hanya jika memang aman.
+5. Open the **Ports** tab in Codespaces.
+6. Find port `8787` labeled **TunaFlowAI Dashboard** and click **Open in Browser**.
+7. Only make the port public when you intentionally want external access.
 
-## Kenapa host harus `0.0.0.0`?
+## Why `0.0.0.0` is required
 
-Di laptop lokal, `127.0.0.1` aman. Di Codespaces, server perlu bind ke `0.0.0.0` agar GitHub bisa melakukan port forwarding. TunaFlowAI sekarang otomatis memakai `0.0.0.0` saat env `CODESPACES=true` terdeteksi. Di luar Codespaces, default tetap `127.0.0.1`.
+On a local laptop, `127.0.0.1` is the safest default. In Codespaces, the server must bind to `0.0.0.0` so GitHub can forward the port. TunaFlowAI automatically uses `0.0.0.0` when `CODESPACES=true` is detected. Outside Codespaces, the default remains `127.0.0.1`.
 
-## URL dashboard
+## Dashboard URL
 
-Saat berjalan di Codespaces, CLI akan menampilkan dua URL:
+When running in Codespaces, the CLI prints two URLs:
 
-- URL lokal container: `http://127.0.0.1:8787/dashboard`
-- URL forwarding Codespaces: `https://<codespace>-8787.<domain>/dashboard`
+- Container-local URL: `http://127.0.0.1:8787/dashboard`
+- Codespaces forwarded URL: `https://<codespace>-8787.<domain>/dashboard`
 
-Gunakan URL forwarding dari tab **Ports** bila membuka dari browser biasa.
+Use the forwarded URL from the **Ports** tab when opening the dashboard from a normal browser.
 
 ## Troubleshooting
 
-### Dashboard tidak terbuka
+### Dashboard does not open
 
-Cek:
+Check the server:
 
 ```bash
 npm start
 ```
 
-Pastikan log menampilkan `Gateway TunaFlowAI berjalan` dan port `8787` muncul di tab **Ports**.
+The log should show `TunaFlowAI gateway running` and port `8787` should appear in the **Ports** tab.
 
-### Port belum muncul
+### Port does not appear
 
-Jalankan manual:
+Run:
 
 ```bash
 curl -I http://127.0.0.1:8787/dashboard
 ```
 
-Jika `npm start` belum jalan, port tidak akan aktif.
+If `npm start` is not running, the port will not be active.
 
-### Model API error
+### Model API errors
 
-Repo default memakai placeholder seperti `YOUR_OPENAI_MODEL`. Untuk uji GUI, dashboard tetap bisa dibuka tanpa API key. Untuk model nyata, isi secret di Codespaces Secrets atau environment variable, jangan commit ke repo.
+The default repository uses placeholders such as `YOUR_OPENAI_MODEL`. The dashboard can be tested without API keys. For real model calls, put credentials in Codespaces Secrets or environment variables. Do not commit secrets.
 
-### Dependency opsional
+### Optional dependencies
 
-Fitur produksi tertentu membutuhkan paket opsional:
+Some production features need optional packages:
 
 ```bash
 npm install playwright xlsx pdf-parse ws
 npx playwright install chromium
 ```
 
-Paket ini tidak dipasang otomatis agar fresh Codespaces ringan dan tidak gagal karena dependency browser besar.
+These packages are not installed automatically so a fresh Codespaces setup remains lightweight and avoids large browser dependency failures.

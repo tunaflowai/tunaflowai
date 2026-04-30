@@ -1,7 +1,7 @@
 {
   "name": "tunaflow",
   "version": "0.5.0-alpha.0",
-  "description": "TunaFlowAI: agen operasi kerja event-driven dengan identitas, persona, skill pekerjaan, tool bersandbox, fallback model, channel, dasbor, dan audit log.",
+  "description": "TunaFlowAI: event-driven work operating agent with identity, personas, job skills, sandboxed tools, model fallback, channels, dashboard, and audit logs.",
   "type": "module",
   "private": false,
   "license": "MIT",

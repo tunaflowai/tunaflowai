@@ -49,13 +49,13 @@ export class SlackChannel {
   appToken() { return this.config.appToken || process.env[this.config.appTokenEnv || 'SLACK_APP_TOKEN']; }
 
   async start({ emit } = {}) {
-    if (this.config.socketMode?.enabled !== true && this.config.socketModeEnabled !== true) return { ok: true, skipped: true, reason: 'Slack Socket Mode nonaktif' };
+    if (this.config.socketMode?.enabled !== true && this.config.socketModeEnabled !== true) return { ok: true, skipped: true, reason: 'Slack Socket Mode disabled' };
     const appToken = this.appToken();
-    if (!appToken) throw new Error('Token Slack app untuk Socket Mode belum dikonfigurasi');
+    if (!appToken) throw new Error('Missing Slack app token for Socket Mode');
     const { WebSocket } = await optionalImportWs();
     const open = await fetch('https://slack.com/api/apps.connections.open', { method: 'POST', headers: { authorization: `Bearer ${appToken}` } });
     const data = await open.json().catch(() => ({}));
-    if (!data.ok || !data.url) throw new Error(`Slack Socket Mode gagal dibuka: ${data.error || open.status}`);
+    if (!data.ok || !data.url) throw new Error(`Slack Socket Mode open failed: ${data.error || open.status}`);
     this.socket = new WebSocket(data.url);
     this.socket.on('message', (payload) => this.handleSocketMessage(payload, { emit }));
     this.socket.on('error', (error) => this.auditLog?.record?.('channel.slack.socket.error', { error: error.message }));
@@ -79,5 +79,5 @@ export class SlackChannel {
 
 async function optionalImportWs() {
   try { return await import('ws'); }
-  catch { throw new Error("Slack Socket Mode membutuhkan paket opsional 'ws'. Jalankan: npm install ws"); }
+  catch { throw new Error("Slack Socket Mode requires optional package 'ws'. Run: npm install ws"); }
 }

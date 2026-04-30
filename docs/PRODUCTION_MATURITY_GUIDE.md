@@ -1,100 +1,114 @@
-# Panduan Kematangan Produksi TunaFlowAI
+# TunaFlowAI Production Maturity Guide
 
-Dokumen ini merangkum perbaikan yang membuat TunaFlowAI lebih siap dipakai sebagai produk nyata, bukan sekadar demo lokal. Prinsip utamanya: semua integrasi berisiko harus eksplisit, dapat diaudit, dan aman secara bawaan.
+This document summarizes the product-maturity work that moves TunaFlowAI from a local demo toward a real operational product. The guiding principle is simple: every risky integration must be explicit, auditable, and safe by default.
 
-## 1. Driver browser Playwright penuh
+## 1. Full Playwright browser driver
 
-TunaFlowAI sekarang menyiapkan `PlaywrightBrowserDriver` di `src/browser/playwright-driver.js` sebagai driver opsional untuk otomasi browser produksi.
+`src/browser/playwright-driver.js` provides an optional Playwright-based browser driver for production browser automation.
 
-Kemampuan yang disiapkan:
-- membuka halaman dengan Chromium/Firefox/WebKit melalui Playwright;
-- mengambil judul dan teks halaman;
-- aksi dasar seperti `click`, `fill`, `type`, `press`, dan screenshot;
-- dukungan `storageState` untuk sesi login terkontrol;
-- audit event untuk akses dan aksi browser.
+Capabilities:
 
-Aktivasi yang disarankan:
+- launch Chromium, Firefox, or WebKit through Playwright;
+- fetch page title and body text;
+- perform basic actions such as `click`, `fill`, `type`, `press`, and screenshot;
+- support `storageState` for controlled logged-in sessions;
+- write audit events for browser fetches and actions.
+
+Optional setup:
 
 ```bash
 npm install playwright
 npx playwright install chromium
 ```
 
-Gunakan hanya di mesin tepercaya. Aksi klik, ketik, submit form, dan transaksi tetap harus melewati approval policy.
+Use this only on trusted machines. Clicks, typing, form submissions, and transactions should still go through approval policy.
 
-## 2. Parser XLSX/PDF production-grade
+## 2. Production-grade XLSX/PDF parser
 
-`src/parsers/document-parser.js` menambahkan `ProductionDocumentParser` sebagai lapisan parser dokumen produksi.
+`src/parsers/document-parser.js` adds `ProductionDocumentParser` for document parsing.
 
-Format:
-- `.txt`, `.md`, `.csv`, `.json`, `.log` tanpa dependency tambahan;
-- `.xlsx`/`.xls` via paket opsional `xlsx`;
-- `.pdf` via paket opsional `pdf-parse`.
+Supported formats:
 
-Instalasi opsional:
+- `.txt`, `.md`, `.csv`, `.json`, `.log` without extra dependencies;
+- `.xlsx` and `.xls` through optional `xlsx`;
+- `.pdf` through optional `pdf-parse`.
+
+Optional setup:
 
 ```bash
 npm install xlsx pdf-parse
 ```
 
-Catatan keamanan: parser membaca file lokal. Untuk dokumen tidak tepercaya, jalankan di sandbox/container dan batasi ukuran file.
+For untrusted documents, run parsing in a sandbox or container and enforce file-size limits.
 
 ## 3. Discord Gateway WebSocket mode
 
-Mode webhook/interactions tetap menjadi bawaan paling sederhana. Untuk bot real-time, gunakan Discord Gateway WebSocket pada adapter terpisah/opsional dengan prinsip berikut:
+The Discord adapter now supports optional Gateway WebSocket mode for real-time bot messages.
 
-- token bot hanya dari env `DISCORD_BOT_TOKEN`;
-- intents dibatasi sesuai kebutuhan;
-- heartbeat dan reconnect exponential backoff;
-- dedupe event berdasarkan sequence/id;
-- semua pesan masuk dinormalisasi ke event `channel.message`;
-- pengiriman pesan tetap lewat REST API Discord.
+Production checklist:
 
-Status saat ini: desain dan guardrail siap di dokumentasi. Implementasi runtime penuh sebaiknya memakai dependency `ws` atau library resmi yang diaudit.
+- read the bot token from `DISCORD_BOT_TOKEN`;
+- keep intents minimal;
+- use heartbeat handling and reconnect strategy;
+- normalize inbound messages to internal `channel.message` events;
+- send outbound messages through the Discord REST API.
+
+Install optional dependency when enabling Gateway mode:
+
+```bash
+npm install ws
+```
 
 ## 4. Slack Socket Mode
 
-Socket Mode cocok saat server tidak ingin expose webhook publik.
+The Slack adapter now supports optional Socket Mode when a public webhook endpoint is not desired.
 
-Checklist produksi:
-- env `SLACK_APP_TOKEN` untuk koneksi Socket Mode;
-- env `SLACK_BOT_TOKEN` untuk `chat.postMessage`;
-- reconnect dengan jitter;
-- ack event cepat sebelum proses model panjang;
-- event masuk tetap dinormalisasi ke `channel.message`.
+Production checklist:
 
-Status saat ini: adapter webhook Slack tetap ada; Socket Mode dicatat sebagai adapter opsional agar dependency tidak membengkak.
+- use `SLACK_APP_TOKEN` for Socket Mode;
+- use `SLACK_BOT_TOKEN` for `chat.postMessage`;
+- acknowledge envelopes quickly before long model work;
+- normalize inbound messages to `channel.message` events.
 
-## 5. Panduan produksi WhatsApp Cloud
+Install optional dependency when enabling Socket Mode:
 
-Untuk WhatsApp Cloud production:
-- gunakan `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_VERIFY_TOKEN`, dan `WHATSAPP_APP_SECRET`;
-- aktifkan verifikasi `x-hub-signature-256`;
-- pisahkan nomor dev dan nomor produksi;
-- jangan kirim pesan template tanpa approval bisnis;
-- simpan audit outbound tanpa menyimpan isi rahasia berlebihan;
-- hormati rate limit dan window 24 jam WhatsApp.
+```bash
+npm install ws
+```
+
+## 5. WhatsApp Cloud production guide
+
+For WhatsApp Cloud production:
+
+- use `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_VERIFY_TOKEN`, and `WHATSAPP_APP_SECRET`;
+- verify `x-hub-signature-256`;
+- separate development and production numbers;
+- do not send business templates without explicit approval;
+- store outbound audit records without over-retaining sensitive message content;
+- respect WhatsApp rate limits and the 24-hour customer service window.
 
 ## 6. Multi-user dashboard roles
 
-Arah role dashboard:
-- `owner`: akses penuh, termasuk config dan approval berisiko tinggi;
-- `admin`: kelola channel, model, skill, dan approval medium;
-- `operator`: menjalankan task harian dan melihat status;
-- `viewer`: hanya membaca dashboard/audit ringkas.
+Planned dashboard roles:
 
-Implementasi bertahap:
-1. tambah user store lokal berbasis hash password;
-2. tambah cookie/session dengan role;
-3. beri middleware authorization per endpoint;
-4. audit semua login dan perubahan role;
-5. dukung SSO/OIDC sebagai opsi enterprise.
+- `owner`: full access including config and high-risk approval;
+- `admin`: manage channels, models, skills, and medium-risk approval;
+- `operator`: run daily tasks and view status;
+- `viewer`: read-only dashboard and audit summaries.
+
+Suggested implementation path:
+
+1. Add a local user store with hashed passwords.
+2. Add cookie/session role claims.
+3. Add authorization middleware per endpoint.
+4. Audit every login and role change.
+5. Add OIDC/SSO for enterprise deployments.
 
 ## 7. Remote audit backend
 
-`src/core/remote-audit-backend.js` menambahkan backend audit jarak jauh opsional. Audit lokal tetap utama, remote backend dipakai untuk mirror append-only.
+`src/core/remote-audit-backend.js` adds an optional remote audit mirror. The local audit log remains the source of truth; the remote backend is used for append-only mirroring.
 
-Contoh config:
+Example config:
 
 ```json
 {
@@ -109,21 +123,21 @@ Contoh config:
 }
 ```
 
-Rekomendasi: gunakan endpoint internal HTTPS, batasi IP, dan simpan hash chain agar audit bisa diverifikasi.
+Use an internal HTTPS endpoint, restrict source IPs, and preserve the hash chain for verification.
 
 ## 8. Plugin marketplace index
 
-`src/plugins/marketplace-index.js` menyiapkan pembaca index marketplace lokal/remote.
+`src/plugins/marketplace-index.js` loads local and remote plugin marketplace indexes.
 
-Format index:
+Example index:
 
 ```json
 {
   "version": 1,
   "plugins": [
     {
-      "name": "contoh-plugin",
-      "description": "Plugin contoh",
+      "name": "example-plugin",
+      "description": "Example plugin",
       "version": "0.1.0",
       "url": "https://example.com/plugin.zip",
       "sha256": "...",
@@ -133,43 +147,22 @@ Format index:
 }
 ```
 
-Marketplace tidak boleh auto-install tanpa verifikasi signature dan approval user.
+Marketplace entries must never auto-install without signature verification and user approval.
 
 ## 9. Signed plugin distribution
 
-`src/plugins/signed-distribution.js` menyediakan utilitas manifest dan HMAC signature untuk distribusi plugin.
+`src/plugins/signed-distribution.js` provides manifest and HMAC signature utilities for plugin distribution.
 
-Alur aman:
-1. buat manifest berisi daftar file dan hash;
-2. tanda tangani manifest dengan secret signing key;
-3. publish plugin + manifest;
-4. saat install, verifikasi hash file dan signature;
-5. catat trust record ke skill/plugin trust registry.
+Safe flow:
 
-Untuk ekosistem publik, HMAC lokal bisa ditingkatkan ke Ed25519 public/private key.
+1. Create a manifest with file paths and hashes.
+2. Sign the manifest with a signing secret.
+3. Publish the plugin and manifest together.
+4. Verify file hashes and signature before installation.
+5. Record trust decisions in the skill or plugin trust registry.
+
+For a public ecosystem, HMAC can later be upgraded to Ed25519 public/private key signing.
 
 ## 10. Full deployment guide
 
-Checklist deployment penuh:
-- jalankan di user non-root;
-- gunakan `.env` di server, jangan commit secret;
-- aktifkan dashboard auth dan API token;
-- gunakan reverse proxy HTTPS;
-- aktifkan backup `.tunaflow/` dan audit log;
-- pisahkan environment dev/staging/prod;
-- pin dependency dan audit package;
-- jalankan smoke test sebelum deploy;
-- monitor health endpoint, disk, memory, dan queue;
-- dokumentasikan prosedur rollback.
-
-Contoh start production sederhana:
-
-```bash
-npm ci --omit=dev
-export TUNAFLOW_CONFIG=/opt/tunaflow/config/tunaflow.config.json
-export TUNAFLOW_HOST=127.0.0.1
-export TUNAFLOW_PORT=8787
-npm start
-```
-
-Untuk systemd, reverse proxy, backup, dan hardening detail, lihat `docs/DEPLOYMENT_GUIDE.md`.
+See `docs/DEPLOYMENT_GUIDE.md` for production deployment, systemd, reverse proxy, backup, audit, and rollback guidance.

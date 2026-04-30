@@ -1,20 +1,7 @@
-# Kode Etik
+# Code of Conduct
 
-Bersikap sopan, aman, dan menghormati pengguna lain. Diskusi teknis boleh tegas, tetapi tidak menyerang pribadi.
+TunaFlowAI is an open-source project for safe, token-efficient AI automation. Contributors are expected to communicate respectfully, assume good intent, and keep safety in mind when proposing features that can affect real systems.
 
-## Cara cepat
+Unacceptable behavior includes harassment, targeted insults, doxxing, spam, and knowingly encouraging unsafe automation defaults.
 
-```bash
-npm install
-npm test
-npm run check
-npm run dev
-```
-
-## Prinsip produk
-
-- Lokal-first dan aman secara bawaan.
-- Tindakan berisiko wajib melewati approval.
-- Secret tidak boleh masuk Git.
-- Audit log harus bisa diverifikasi.
-- Integrasi produksi sebaiknya diaktifkan bertahap.
+Maintainers may remove comments, close issues, or block participants who repeatedly violate this code of conduct.

@@ -1,20 +1,15 @@
-# Panduan Kontribusi
+# Contributing to TunaFlow
 
-Kontribusi diterima melalui perubahan kecil, jelas, dan mudah diuji. Jalankan test sebelum pull request, jangan commit secret, dan jelaskan alasan perubahan.
+Thanks for helping build TunaFlow.
 
-## Cara cepat
+Suggested contribution areas:
 
-```bash
-npm install
-npm test
-npm run check
-npm run dev
-```
+- Model providers
+- Observers
+- Tools
+- Permission policies
+- Context compression
+- Dashboard and approval UI
+- Tests and documentation
 
-## Prinsip produk
-
-- Lokal-first dan aman secara bawaan.
-- Tindakan berisiko wajib melewati approval.
-- Secret tidak boleh masuk Git.
-- Audit log harus bisa diverifikasi.
-- Integrasi produksi sebaiknya diaktifkan bertahap.
+Keep default behavior safe. New tools should declare a risk level: `low`, `medium`, or `high`.

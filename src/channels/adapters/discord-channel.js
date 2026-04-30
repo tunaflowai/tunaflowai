@@ -55,9 +55,9 @@ export class DiscordChannel {
   }
 
   async start({ emit } = {}) {
-    if (this.config.gateway?.enabled !== true && this.config.gatewayEnabled !== true) return { ok: true, skipped: true, reason: 'Discord Gateway nonaktif' };
+    if (this.config.gateway?.enabled !== true && this.config.gatewayEnabled !== true) return { ok: true, skipped: true, reason: 'Discord Gateway disabled' };
     const token = this.token();
-    if (!token) throw new Error('Token bot Discord belum dikonfigurasi');
+    if (!token) throw new Error('Missing Discord bot token');
     const { WebSocket } = await optionalImportWs();
     const gatewayUrl = this.config.gateway?.url || 'wss://gateway.discord.gg/?v=10&encoding=json';
     this.gateway = new WebSocket(gatewayUrl);
@@ -96,5 +96,5 @@ export class DiscordChannel {
 
 async function optionalImportWs() {
   try { return await import('ws'); }
-  catch { throw new Error("Discord Gateway membutuhkan paket opsional 'ws'. Jalankan: npm install ws"); }
+  catch { throw new Error("Discord Gateway requires optional package 'ws'. Run: npm install ws"); }
 }

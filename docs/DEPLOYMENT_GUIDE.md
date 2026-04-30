@@ -1,24 +1,24 @@
-# Panduan Deployment TunaFlowAI
+# TunaFlowAI Deployment Guide
 
-Panduan ini ditulis untuk menjalankan TunaFlowAI di server produksi kecil sampai menengah.
+This guide is for running TunaFlowAI on a small or medium production server.
 
-## Prasyarat
+## Requirements
 
-- Node.js 22 atau lebih baru.
-- User Linux non-root, misalnya `tunaflow`.
-- Reverse proxy HTTPS seperti Nginx/Caddy.
-- Secret disimpan di environment/server secret manager, bukan di Git.
+- Node.js 22 or newer.
+- A non-root Linux user, for example `tunaflow`.
+- An HTTPS reverse proxy such as Nginx or Caddy.
+- Secrets stored in environment variables or a server secret manager, never in Git.
 
-## Struktur direktori
+## Directory layout
 
 ```text
-/opt/tunaflow/app       # source aplikasi
-/opt/tunaflow/config    # config produksi
-/var/lib/tunaflow       # data .tunaflow, audit, state
-/var/log/tunaflow       # log service
+/opt/tunaflow/app       # application source
+/opt/tunaflow/config    # production config
+/var/lib/tunaflow       # .tunaflow data, audit, state
+/var/log/tunaflow       # service logs
 ```
 
-## Config produksi minimum
+## Minimal production config
 
 ```json
 {
@@ -39,7 +39,7 @@ Panduan ini ditulis untuk menjalankan TunaFlowAI di server produksi kecil sampai
 }
 ```
 
-## Systemd contoh
+## Example systemd service
 
 ```ini
 [Unit]
@@ -67,21 +67,22 @@ WantedBy=multi-user.target
 
 ## Reverse proxy
 
-- Terminate TLS di proxy.
-- Batasi upload body sesuai kebutuhan.
-- Tambahkan basic rate limit untuk endpoint publik.
-- Jangan expose dashboard tanpa auth.
+- Terminate TLS at the proxy.
+- Limit request body size.
+- Add basic rate limiting for public endpoints.
+- Never expose the dashboard without authentication.
 
-## Backup dan audit
+## Backup and audit
 
-Backup harian minimal:
-- config produksi;
+Back up these files daily:
+
+- production config;
 - `.tunaflow/audit.jsonl`;
 - `.tunaflow/state.json`;
 - `.tunaflow/identity.json`;
-- skill/plugin trust registry.
+- skill and plugin trust registries.
 
-Verifikasi audit:
+Verify the audit chain:
 
 ```bash
 npm run check
@@ -90,15 +91,15 @@ node src/cli.js audit verify
 
 ## Rollback
 
-1. Stop service.
-2. Checkout tag/commit sebelumnya.
-3. Restore config jika schema berubah.
-4. Jalankan smoke test.
-5. Start service lagi.
+1. Stop the service.
+2. Check out the previous tag or commit.
+3. Restore config if the schema changed.
+4. Run the smoke test.
+5. Start the service again.
 
-## Catatan keamanan
+## Security notes
 
-- Jangan jalankan sebagai root.
-- Jangan aktifkan tool destruktif tanpa approval.
-- Gunakan allowlist command.
-- Semua integrasi pembayaran, broker, posting publik, dan upload cloud harus eksplisit dan approval-gated.
+- Do not run the service as root.
+- Do not enable destructive tools without approval.
+- Use a command allowlist.
+- Payment, broker, public posting, and cloud upload integrations must remain explicitly approval-gated.
