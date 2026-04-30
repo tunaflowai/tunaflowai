@@ -1,7 +1,7 @@
 {
   "name": "tunaflow",
   "version": "0.1.0",
-  "description": "TunaFlow: an event-driven, token-efficient work operating agent with model fallback chains.",
+  "description": "TunaFlowAI: an event-driven, token-efficient work operating agent with model fallback chains.",
   "type": "module",
   "private": false,
   "license": "MIT",
@@ -24,7 +24,9 @@
     "fallback",
     "automation",
     "open-source",
-    "agent-runtime"
+    "agent-runtime",
+    "event-driven",
+    "token-efficient"
   ],
   "author": "",
   "dependencies": {},

@@ -1,4 +1,4 @@
-# TunaFlow Architecture
+# TunaFlowAI Architecture
 
 TunaFlow is an event-driven work operating agent. The goal is to monitor real work, keep compact state, call models only when necessary, and execute actions through a permissioned tool layer.
 
@@ -49,3 +49,12 @@ For each event, TunaFlow selects a chain, then tries models in order. A model is
 3. Cheap chains can be used for low priority events.
 4. Context is compressed before planning.
 5. Tool results and state updates are stored outside the model context.
+
+
+## Current limitations
+
+- The MVP stores data locally in JSON/JSONL files.
+- The gateway is local-first and should not be exposed directly to the public internet.
+- Approval flows are runtime-level primitives, not a finished web UI.
+- The mock provider is intended for deterministic demos and tests.
+- Production use still needs sandboxing, stronger secret handling, authentication, and observability.

@@ -1,8 +1,8 @@
-# TunaFlow
+# TunaFlowAI
 
-TunaFlow is an open-source, event-driven work operating agent.
+TunaFlowAI (package name: `tunaflow`) is an open-source, event-driven work operating agent for building safe, token-efficient AI automation.
 
-It is inspired by the idea of connecting chat and real work to AI agents, but the design goal is different:
+It is inspired by the idea of connecting chat and real work to AI agents, but the design goal is intentionally focused:
 
 ```text
 Observe real work -> keep compact state -> call models only when needed -> fallback if a model fails -> execute tools with permission -> verify and audit.
@@ -13,6 +13,14 @@ Observe real work -> keep compact state -> call models only when needed -> fallb
 Most agent systems spend too many tokens because they send too much raw context into the model. TunaFlow keeps raw events in storage, then sends only compact work state into the model.
 
 TunaFlow also treats model fallback as a first-class feature. If the primary model is down, slow, not configured, or returning bad output, the router can automatically try the next model in the chain.
+
+## What makes TunaFlow different
+
+- **Event-driven by default**: TunaFlow reacts to meaningful work events instead of constantly polling or re-sending full chat history.
+- **Compact state, not raw history**: raw events stay in storage; the model receives a small work snapshot.
+- **Model fallback chains**: route work through primary and fallback models with timeout, cooldown, health, and audit metadata.
+- **Permission-first tools**: every tool has a risk level, and medium/high-risk actions are approval-gated by default.
+- **Local-first MVP**: the current runtime is designed for local demos, experiments, and extension before production hardening.
 
 ## Current status
 
@@ -51,7 +59,7 @@ Then send an event:
 ```bash
 curl -s http://127.0.0.1:8787/chat \
   -H 'content-type: application/json' \
-  -d '{"text":"Pantau pekerjaan saya dan hemat token"}'
+  -d '{"text":"Watch my workspace and keep model usage efficient"}'
 ```
 
 Or send a terminal error event:
@@ -140,8 +148,22 @@ config/
   tunaflow.config.example.json
 docs/
   ARCHITECTURE.md
+  COMPARISON.md
+  DEMO.md
   ROADMAP.md
 ```
+
+## Use cases
+
+TunaFlow is a good starting point for:
+
+- local AI work assistants,
+- model fallback experiments,
+- token-efficient agent runtimes,
+- approval-gated automation,
+- event-driven monitoring for terminals, files, and future browser/workspace observers.
+
+TunaFlow is not production-ready yet. See `docs/ROADMAP.md` for the hardening plan.
 
 ## Safety defaults
 
@@ -149,6 +171,15 @@ docs/
 - `write_file` and `edit_file` are medium risk and require approval by default.
 - `run_command` is high risk and requires approval by default.
 - Paths are restricted to the configured workspace.
+
+## Documentation
+
+- `docs/ARCHITECTURE.md` — runtime architecture and core loop
+- `docs/COMPARISON.md` — positioning against broader agent frameworks
+- `docs/DEMO.md` — local demo commands and expected behavior
+- `docs/ROADMAP.md` — planned milestones
+- `SECURITY.md` — current safety model and limitations
+- `CONTRIBUTING.md` — contribution guide
 
 ## License
 

@@ -27,7 +27,7 @@ export class MockProvider {
       actions.push({
         tool: 'send_reply',
         args: {
-          message: 'Saya mendeteksi error di terminal. Saya sudah menyimpan konteksnya dan siap bantu investigasi dengan langkah hemat token.'
+          message: 'A terminal error was detected. I saved the compact context and can help investigate with token-efficient next steps.'
         }
       });
     } else if (lower.includes('user.message') || lower.includes('chat.message')) {
@@ -35,7 +35,7 @@ export class MockProvider {
       actions.push({
         tool: 'send_reply',
         args: {
-          message: 'Instruksi diterima. Saya akan memantau event penting, menjaga state kerja, dan hanya memanggil model saat diperlukan.'
+          message: 'Instruction received. I will watch important events, keep the work state compact, and call models only when needed.'
         }
       });
     }

@@ -1,4 +1,4 @@
-# TunaFlow Roadmap
+# TunaFlowAI Roadmap
 
 ## v0.1 - Local MVP
 
@@ -11,6 +11,14 @@
 - Tool registry
 - Permission engine
 - Audit log
+
+## Near-term polish
+
+- Stronger README positioning and examples
+- English-only default code/demo messages for global open-source users
+- Demo screenshots or short terminal GIF
+- More tests around runtime orchestration and permission decisions
+- Clearer provider configuration examples for OpenAI-compatible APIs
 
 ## v0.2 - Real observers
 

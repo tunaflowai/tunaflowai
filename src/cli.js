@@ -31,5 +31,5 @@ try {
 }
 
 function printHelp() {
-  console.log(`TunaFlow commands:\n\n  tunaflow dev                  Start local gateway\n  tunaflow emit <type> <text>   Emit one event into the runtime\n  tunaflow status               Print state and model health\n  tunaflow check                Validate config/runtime\n\nExamples:\n  node src/cli.js dev\n  node src/cli.js emit user.message "Pantau pekerjaan saya"\n  node src/cli.js emit terminal.output "Error: cannot find variable plans"\n`);
+  console.log(`TunaFlow commands:\n\n  tunaflow dev                  Start local gateway\n  tunaflow emit <type> <text>   Emit one event into the runtime\n  tunaflow status               Print state and model health\n  tunaflow check                Validate config/runtime\n\nExamples:\n  node src/cli.js dev\n  node src/cli.js emit user.message "Watch my workspace"\n  node src/cli.js emit terminal.output "Error: cannot find variable plans"\n`);
 }
