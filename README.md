@@ -29,7 +29,7 @@ Observe real work
 
 ## Current status
 
-This is a `v0.4.0-alpha` foundation. It is usable for local demos, experiments, and early extension work, not production autonomous automation yet.
+This is a `v0.5.0-alpha` production-maturity foundation. It is usable for local demos, experiments, and early extension work, not production autonomous automation yet.
 
 Included now:
 
@@ -38,7 +38,13 @@ Included now:
 - Event store
 - State engine
 - Context compressor
+- Agent identity manager with user-defined name and personality
 - Persona manager with bundled personas and runtime switching
+- Task graph and per-task budget manager
+- Policy-as-code engine
+- Secrets vault
+- Sandbox runner for `run_command`
+- Browser operator foundation
 - Model router with fallback chain
 - Provider registry and model catalog
 - Native Gemini provider
@@ -46,7 +52,9 @@ Included now:
 - OpenAI-compatible provider presets for Qwen, MiniMax, DeepSeek, Kimi/Moonshot, OpenRouter, Ollama, and more
 - Skill loader/selector with bundled and acquired job skills
 - Channel registry and outbound router
-- Webhook, Telegram, Discord, Slack, and WhatsApp Cloud adapter foundations
+- Webhook, Telegram, Discord, Slack, and WhatsApp Cloud adapter foundations with signature verification hooks
+- Market, webhook, schedule, and server-health observer foundations
+- Finance, F&B, content, back-office, customer-service, and DevOps job skills
 - Permission engine and approval execution
 - Tool registry
 - Tamper-evident audit log
@@ -118,6 +126,34 @@ The active persona influences:
 - risk posture and autonomy hints.
 
 Persona instructions cannot override the permission engine, tool policy, or safety rules.
+
+## Agent identity and personality
+
+Users can name the agent and customize its personality independently from persona selection.
+
+```bash
+node src/cli.js identity show
+node src/cli.js identity name Anna
+node src/cli.js identity set personality.tone="warm, precise, proactive"
+node src/cli.js identity reset
+```
+
+Identity controls how the agent introduces itself and communicates. It does not grant tool permissions, bypass approval rules, or unlock secrets.
+
+## Production-maturity foundations in v0.5
+
+This pack adds foundations for:
+
+- sandboxed command execution,
+- provider HTTP integration tests,
+- signed channel webhooks,
+- trusted skill signing,
+- dashboard session authentication,
+- task graph and per-task budgets,
+- browser operator tools with approval gates,
+- local encrypted secrets,
+- policy-as-code,
+- domain job skills for finance, F&B, content, back-office, customer service, and DevOps.
 
 ## Job skills
 

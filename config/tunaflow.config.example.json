@@ -8,6 +8,27 @@
     "maxActionsPerRun": 8,
     "defaultPersona": "operator"
   },
+  "identity": {
+    "agentName": "Tuna",
+    "displayName": "Tuna",
+    "pronouns": "they/them",
+    "bio": "A local-first AI work operating agent with model fallback, persona switching, skills, approvals, and audit logs.",
+    "personality": {
+      "tone": "calm, practical, safety-aware, token-efficient, and action-oriented",
+      "traits": [
+        "careful",
+        "proactive",
+        "evidence-driven",
+        "concise"
+      ],
+      "language": "English by default; adapt to user language when asked",
+      "boundaries": [
+        "Never bypass approval policy",
+        "Never expose secrets",
+        "Never claim completed work without evidence"
+      ]
+    }
+  },
   "server": {
     "host": "127.0.0.1",
     "port": 8787,
@@ -19,6 +40,56 @@
   "context": {
     "maxRecentEvents": 8,
     "maxTextChars": 1800
+  },
+  "policy": {
+    "file": "policies/default.policy.json"
+  },
+  "sandbox": {
+    "mode": "local",
+    "dockerImage": "node:22-bookworm-slim",
+    "network": "none",
+    "readOnly": false,
+    "commandAllowlist": [
+      "node",
+      "npm",
+      "pnpm",
+      "yarn",
+      "git",
+      "python",
+      "python3"
+    ],
+    "commandDenyPatterns": [
+      "git push",
+      "git reset --hard",
+      "npm publish",
+      "pnpm publish",
+      "yarn publish",
+      "rm -rf",
+      "curl | sh",
+      "wget | sh",
+      "sudo ",
+      "chmod 777"
+    ],
+    "defaultTimeoutMs": 30000,
+    "maxTimeoutMs": 120000,
+    "maxOutputChars": 6000
+  },
+  "browser": {
+    "maxResponseChars": 12000,
+    "blockedHosts": [
+      "169.254.169.254",
+      "localhost",
+      "127.0.0.1",
+      "0.0.0.0"
+    ],
+    "allowedHosts": []
+  },
+  "secrets": {
+    "keyEnv": "TUNAFLOW_SECRETS_KEY",
+    "allowLocalKeyFile": false
+  },
+  "skillTrust": {
+    "signingKeyEnv": "TUNAFLOW_SKILL_SIGNING_KEY"
   },
   "skills": {
     "enabled": true,
@@ -32,26 +103,35 @@
     "acquiredDir": ".tunaflow/skills/acquired"
   },
   "channels": {
+    "autoStart": true,
     "webhook": {
       "enabled": true
     },
     "telegram": {
       "enabled": false,
-      "tokenEnv": "TELEGRAM_BOT_TOKEN"
+      "tokenEnv": "TELEGRAM_BOT_TOKEN",
+      "secretTokenEnv": "TELEGRAM_WEBHOOK_SECRET",
+      "polling": false
     },
     "discord": {
       "enabled": false,
-      "tokenEnv": "DISCORD_BOT_TOKEN"
+      "tokenEnv": "DISCORD_BOT_TOKEN",
+      "publicKeyEnv": "DISCORD_PUBLIC_KEY",
+      "verifySignatures": true
     },
     "slack": {
       "enabled": false,
-      "botTokenEnv": "SLACK_BOT_TOKEN"
+      "botTokenEnv": "SLACK_BOT_TOKEN",
+      "signingSecretEnv": "SLACK_SIGNING_SECRET",
+      "verifySignatures": true
     },
     "whatsappCloud": {
       "enabled": false,
       "accessTokenEnv": "WHATSAPP_ACCESS_TOKEN",
       "phoneNumberIdEnv": "WHATSAPP_PHONE_NUMBER_ID",
-      "verifyTokenEnv": "WHATSAPP_VERIFY_TOKEN"
+      "verifyTokenEnv": "WHATSAPP_VERIFY_TOKEN",
+      "appSecretEnv": "WHATSAPP_APP_SECRET",
+      "verifySignatures": true
     }
   },
   "tokenBudget": {
@@ -166,27 +246,12 @@
     "blockedTools": []
   },
   "tools": {
-    "commandAllowlist": [
-      "node",
-      "npm",
-      "pnpm",
-      "yarn",
-      "git",
-      "python",
-      "python3"
-    ],
-    "commandDenyPatterns": [
-      "git push",
-      "git reset --hard",
-      "npm publish",
-      "pnpm publish",
-      "yarn publish",
-      "rm -rf",
-      "curl | sh",
-      "wget | sh"
-    ],
     "defaultCommandTimeoutMs": 30000,
-    "maxCommandOutputChars": 6000
+    "maxCommandOutputChars": 6000,
+    "telegram": {
+      "tokenEnv": "TELEGRAM_BOT_TOKEN",
+      "chatIdEnv": "TELEGRAM_CHAT_ID"
+    }
   },
   "personas": {
     "enabled": true,
@@ -196,5 +261,21 @@
     "allowUserPersonas": false,
     "maxPersonaChars": 5000,
     "paths": []
+  },
+  "auth": {
+    "enabled": false,
+    "passwordEnv": "TUNAFLOW_DASHBOARD_PASSWORD",
+    "sessionSecretEnv": "TUNAFLOW_SESSION_SECRET",
+    "ttlMs": 43200000
+  },
+  "tasks": {
+    "autoCreateFromUserEvents": true,
+    "defaultBudget": {
+      "maxModelCalls": 8,
+      "maxInputTokens": 30000,
+      "maxOutputTokens": 6000,
+      "maxToolCalls": 20,
+      "maxRuntimeMs": 300000
+    }
   }
 }

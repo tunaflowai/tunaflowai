@@ -23,6 +23,7 @@ export class ChannelRegistry {
 
   async init() {
     for (const [id, channelConfig] of Object.entries(this.config || {})) {
+      if (id === 'autoStart') continue;
       if (channelConfig?.enabled === false) continue;
       const Adapter = ADAPTERS[id] || ADAPTERS[channelConfig?.adapter];
       if (!Adapter) continue;
@@ -36,6 +37,28 @@ export class ChannelRegistry {
     if (this.auditLog) await this.auditLog.record('channels.loaded', { channels: this.list().map((channel) => channel.id) });
   }
 
+  async startAll(ctx = {}) {
+    const results = [];
+    for (const adapter of this.adapters.values()) {
+      if (typeof adapter.start !== 'function') continue;
+      const result = await adapter.start(ctx).catch((error) => ({ ok: false, error: error.message }));
+      results.push({ id: adapter.id, ...result });
+    }
+    if (this.auditLog) await this.auditLog.record('channels.started', { results });
+    return results;
+  }
+
+  async stopAll() {
+    const results = [];
+    for (const adapter of this.adapters.values()) {
+      if (typeof adapter.stop !== 'function') continue;
+      const result = await adapter.stop().catch((error) => ({ ok: false, error: error.message }));
+      results.push({ id: adapter.id, ...(result || { ok: true }) });
+    }
+    if (this.auditLog) await this.auditLog.record('channels.stopped', { results });
+    return results;
+  }
+
   get(id) {
     return this.adapters.get(id) || null;
   }
@@ -45,7 +68,8 @@ export class ChannelRegistry {
       id: adapter.id,
       type: adapter.type,
       enabled: adapter.enabled !== false,
-      capabilities: adapter.capabilities || {}
+      capabilities: adapter.capabilities || {},
+      configured: Boolean(adapter.config && Object.keys(adapter.config).length)
     }));
   }
 

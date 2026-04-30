@@ -1,17 +1,23 @@
+import { verifySlackSignature } from '../webhook-security.js';
+
 export class SlackChannel {
   constructor({ id = 'slack', config = {}, auditLog = null } = {}) {
     this.id = id;
     this.type = 'slack';
     this.config = config;
     this.auditLog = auditLog;
-    this.capabilities = { send: true, receive: true, text: true };
+    this.capabilities = { send: true, receive: true, text: true, webhook: true, signatureVerification: true };
   }
 
-  token() {
-    return this.config.botToken || process.env[this.config.botTokenEnv || 'SLACK_BOT_TOKEN'];
+  token() { return this.config.botToken || process.env[this.config.botTokenEnv || 'SLACK_BOT_TOKEN']; }
+  signingSecret() { return this.config.signingSecret || process.env[this.config.signingSecretEnv || 'SLACK_SIGNING_SECRET']; }
+
+  verifyWebhook({ headers, rawBody }) {
+    return verifySlackSignature({ signingSecret: this.signingSecret(), rawBody, headers });
   }
 
   normalizeInbound(raw = {}) {
+    if (raw.type === 'url_verification') return { type: 'channel.verification', channel: this.id, text: raw.challenge || '', payload: raw, priority: 'low' };
     const event = raw.event || raw;
     return {
       type: 'channel.message',
@@ -20,7 +26,7 @@ export class SlackChannel {
       senderId: event.user || event.user_id,
       text: event.text || '',
       payload: raw,
-      priority: 'normal'
+      priority: /urgent|complaint|refund/i.test(event.text || '') ? 'high' : 'normal'
     };
   }
 

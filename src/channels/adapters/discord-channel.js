@@ -1,24 +1,36 @@
+import { verifyDiscordSignature } from '../webhook-security.js';
+
 export class DiscordChannel {
   constructor({ id = 'discord', config = {}, auditLog = null } = {}) {
     this.id = id;
     this.type = 'discord';
     this.config = config;
     this.auditLog = auditLog;
-    this.capabilities = { send: true, receive: true, text: true };
+    this.capabilities = { send: true, receive: true, text: true, webhook: true, interactions: true, signatureVerification: true };
   }
 
-  token() {
-    return this.config.token || process.env[this.config.tokenEnv || 'DISCORD_BOT_TOKEN'];
+  token() { return this.config.token || process.env[this.config.tokenEnv || 'DISCORD_BOT_TOKEN']; }
+  publicKey() { return this.config.publicKey || process.env[this.config.publicKeyEnv || 'DISCORD_PUBLIC_KEY']; }
+
+  verifyWebhook({ headers, rawBody }) {
+    const verified = verifyDiscordSignature({ publicKeyHex: this.publicKey(), rawBody, headers });
+    if (!verified.ok) return verified;
+    try {
+      const body = JSON.parse(rawBody || '{}');
+      if (body.type === 1) return { ok: true, response: { type: 1 } };
+    } catch (_) {}
+    return { ok: true };
   }
 
   normalizeInbound(raw = {}) {
-    const message = raw.d || raw;
+    const message = raw.d || raw.message || raw;
+    const interactionData = raw.data || {};
     return {
       type: 'channel.message',
       channel: this.id,
-      conversationId: String(message.channel_id || message.channelId || ''),
-      senderId: String(message.author?.id || message.user?.id || ''),
-      text: message.content || '',
+      conversationId: String(message.channel_id || raw.channel_id || raw.channelId || ''),
+      senderId: String(message.author?.id || raw.member?.user?.id || raw.user?.id || ''),
+      text: message.content || interactionData.options?.map((o) => o.value).join(' ') || interactionData.name || '',
       payload: raw,
       priority: 'normal'
     };

@@ -2,7 +2,7 @@
 
 ## v0.4 alpha - Persona, job skills, dashboard
 
-Status: included in this pack.
+Status: shipped in the prior pack.
 
 ```text
 - Persona-based initialization
@@ -16,60 +16,66 @@ Status: included in this pack.
 - Dashboard model/persona/skill/state/audit panels
 ```
 
-## v0.5 - Safer execution
+## v0.5 alpha - Production-maturity foundations
+
+Status: included in this pack.
 
 ```text
+- Agent identity and personality
 - Sandbox runner for run_command
-- Workspace mount policy
-- Environment allowlist by policy
-- Command dry-run mode
-- File edit preview and diff approval
-- Tool result replay
-- Better verification loop
+- Provider HTTP integration tests
+- Telegram/Discord/Slack/WhatsApp Cloud adapter foundations
+- Channel signature verification
+- Skill signing and trusted skill registry
+- Dashboard session authentication
+- Task graph and per-task budgets
+- Browser operator foundation with approval gates
+- Secrets vault
+- Policy-as-code
+- Finance, market, F&B, content, admin, CRM, and DevOps job skills
 ```
 
-## v0.6 - Browser and workspace observers
+## v0.6 - Real operators and richer observers
 
 ```text
-- Browser observer
-- Browser operator using Playwright or a pluggable driver
-- Active window observer
-- Recursive file watcher
+- Playwright browser driver
+- Browser screenshot/DOM observer
+- Recursive file watcher improvements
 - Structured terminal error parser
-- Task graph and task budget manager
+- Provider-specific streaming support
+- Better PDF and XLSX parser plugins
+- Approval diff viewer for file edits
 ```
 
 ## v0.7 - Channel maturity
 
 ```text
-- Telegram adapter implementation
-- Discord adapter implementation
-- Slack adapter implementation
-- WhatsApp Cloud implementation
-- Per-channel allowlists
-- Webhook signature verification
-- Outbound delivery audit
+- Telegram polling and webhook deployment guide
+- Discord interaction and gateway mode
+- Slack Socket Mode option
+- WhatsApp Cloud production webhook guide
+- Per-channel allowlists and rate limits
+- Outbound delivery audit and retries
 ```
 
-## v0.8 - Skill ecosystem
+## v0.8 - Skill and plugin ecosystem
 
 ```text
-- Signed skills
-- Skill manifest validation
+- Signed skills marketplace index
+- Skill manifest schema validation
 - Skill reputation metadata
-- Skill marketplace index format
 - Policy-aware skill allowlists
 - Workspace skill review workflow
+- Plugin SDK for tools, channels, observers, and providers
 ```
 
 ## v1.0 - Production hardening
 
 ```text
-- Secrets vault
-- Auth roles
-- Policy-as-code
-- Remote/tamper-evident audit option
-- Observability dashboard
+- Secrets vault hardening
+- Auth roles and multi-user dashboard
+- Remote/tamper-evident audit backend
 - Multi-workspace isolation
+- Observability dashboard
 - Production deployment guide
 ```

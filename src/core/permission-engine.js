@@ -3,7 +3,7 @@ import path from 'node:path';
 import { createId, ensureDir, normalizeBool, now, readJson, writeJsonAtomic } from './utils.js';
 
 export class PermissionEngine {
-  constructor({ dataDir, config = {}, auditLog = null }) {
+  constructor({ dataDir, config = {}, auditLog = null, policyEngine = null }) {
     this.dataDir = dataDir;
     this.approvalsDir = path.join(dataDir, 'approvals');
     this.config = {
@@ -12,16 +12,25 @@ export class PermissionEngine {
       blockedTools: config.blockedTools || []
     };
     this.auditLog = auditLog;
+    this.policyEngine = policyEngine;
   }
 
   async init() {
     await ensureDir(this.approvalsDir);
   }
 
-  async evaluate({ tool, action, event, runId }) {
+  async evaluate({ tool, action, event, runId, persona = null, task = null }) {
     if (!tool) return { allowed: false, requiresApproval: false, reason: 'Unknown tool' };
     if (this.config.blockedTools.includes(tool.name)) {
       return { allowed: false, requiresApproval: false, reason: `Tool is blocked by policy: ${tool.name}` };
+    }
+
+    const policyDecision = this.policyEngine?.evaluateAction?.({ tool, action, event, persona, task });
+    if (policyDecision?.decision === 'deny') {
+      return { allowed: false, requiresApproval: false, reason: policyDecision.reason, policyRuleId: policyDecision.ruleId || null };
+    }
+    if (policyDecision?.decision === 'allow') {
+      return { allowed: true, requiresApproval: false, reason: policyDecision.reason, policyRuleId: policyDecision.ruleId || null };
     }
 
     if (tool.risk === 'low') return { allowed: true, requiresApproval: false, reason: 'Low risk tool' };
@@ -29,11 +38,11 @@ export class PermissionEngine {
     if (tool.risk === 'high' && this.config.autoApproveHigh) return { allowed: true, requiresApproval: false, reason: 'High risk auto-approved by config' };
     if (tool.risk === 'critical') return { allowed: false, requiresApproval: false, reason: 'Critical risk tools are blocked by default' };
 
-    const approval = await this.requestApproval({ tool, action, event, runId, reason: `${tool.risk} risk tool requires approval` });
-    return { allowed: false, requiresApproval: true, reason: approval.reason, approvalId: approval.id, approvalFile: approval.file };
+    const approval = await this.requestApproval({ tool, action, event, runId, reason: policyDecision?.reason || `${tool.risk} risk tool requires approval`, policy: policyDecision || null });
+    return { allowed: false, requiresApproval: true, reason: approval.reason, approvalId: approval.id, approvalFile: approval.file, policyRuleId: policyDecision?.ruleId || null };
   }
 
-  async requestApproval({ tool, action, event, runId, reason }) {
+  async requestApproval({ tool, action, event, runId, reason, policy = null }) {
     const approval = {
       id: createId('appr'),
       status: 'pending',
@@ -41,6 +50,7 @@ export class PermissionEngine {
       tool: tool.name,
       risk: tool.risk,
       reason,
+      policy,
       action,
       sourceEventId: event?.id,
       createdAt: now(),

@@ -1,18 +1,30 @@
+import { verifyHmacSha256 } from '../webhook-security.js';
+
 export class WhatsAppCloudChannel {
   constructor({ id = 'whatsappCloud', config = {}, auditLog = null } = {}) {
     this.id = id;
     this.type = 'whatsapp-cloud';
     this.config = config;
     this.auditLog = auditLog;
-    this.capabilities = { send: true, receive: true, text: true };
+    this.capabilities = { send: true, receive: true, text: true, webhook: true, signatureVerification: true };
   }
 
-  token() {
-    return this.config.accessToken || process.env[this.config.accessTokenEnv || 'WHATSAPP_ACCESS_TOKEN'];
+  token() { return this.config.accessToken || process.env[this.config.accessTokenEnv || 'WHATSAPP_ACCESS_TOKEN']; }
+  phoneNumberId() { return this.config.phoneNumberId || process.env[this.config.phoneNumberIdEnv || 'WHATSAPP_PHONE_NUMBER_ID']; }
+  appSecret() { return this.config.appSecret || process.env[this.config.appSecretEnv || 'WHATSAPP_APP_SECRET']; }
+  verifyToken() { return this.config.verifyToken || process.env[this.config.verifyTokenEnv || 'WHATSAPP_VERIFY_TOKEN']; }
+
+  verifyGetWebhook({ query }) {
+    const token = query['hub.verify_token'];
+    const challenge = query['hub.challenge'];
+    const expected = this.verifyToken();
+    if (!expected) return { ok: true, challenge: challenge || '' };
+    if (token === expected) return { ok: true, challenge: challenge || '' };
+    return { ok: false, error: 'Invalid WhatsApp verify token' };
   }
 
-  phoneNumberId() {
-    return this.config.phoneNumberId || process.env[this.config.phoneNumberIdEnv || 'WHATSAPP_PHONE_NUMBER_ID'];
+  verifyWebhook({ headers, rawBody }) {
+    return verifyHmacSha256({ secret: this.appSecret(), rawBody, header: headers['x-hub-signature-256'], prefix: 'sha256=' });
   }
 
   normalizeInbound(raw = {}) {

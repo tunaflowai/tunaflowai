@@ -18,86 +18,53 @@ try {
   } else if (command === 'emit') {
     const type = process.argv[3] || 'user.message';
     const text = process.argv.slice(4).join(' ');
-    const app = await createTunaFlowRuntime(await loadConfig());
-    const result = await app.runtime.handleEvent({ type, text });
-    console.log(JSON.stringify(result, null, 2));
+    const app = await appRuntime();
+    console.log(JSON.stringify(await app.runtime.handleEvent({ type, text }), null, 2));
   } else if (command === 'chat') {
     const text = process.argv.slice(3).join(' ');
-    const app = await createTunaFlowRuntime(await loadConfig());
-    const result = await app.runtime.handleEvent({ type: 'user.message', text });
-    console.log(JSON.stringify(result, null, 2));
+    const app = await appRuntime();
+    console.log(JSON.stringify(await app.runtime.handleEvent({ type: 'user.message', text }), null, 2));
   } else if (command === 'status') {
-    const app = await createTunaFlowRuntime(await loadConfig());
-    console.log(JSON.stringify({ state: app.stateEngine.getState(), activePersona: app.personaManager.getActive(), models: app.modelRouter.getHealth(), skills: app.skillLoader.list(), channels: app.channelRegistry.list() }, null, 2));
-  } else if (command === 'models' && process.argv[3] === 'catalog') {
-    const app = await createTunaFlowRuntime(await loadConfig());
-    console.log(JSON.stringify(app.modelRouter.getCatalog(), null, 2));
-  } else if (command === 'skills') {
-    const sub = process.argv[3] || 'list';
-    const app = await createTunaFlowRuntime(await loadConfig());
-    if (sub === 'list') console.log(JSON.stringify(app.skillLoader.list(), null, 2));
-    else if (sub === 'jobs') console.log(JSON.stringify(app.personaManager.skillJobs({ skillLoader: app.skillLoader }), null, 2));
-    else if (sub === 'acquired') console.log(JSON.stringify(await app.skillLoader.listAcquired(), null, 2));
-    else if (sub === 'acquire') {
-      const source = process.argv[4];
-      if (!source) throw new Error('skills acquire requires a local path or loaded skill name');
-      console.log(JSON.stringify(await app.skillLoader.acquire(source, { name: process.argv[5] }), null, 2));
-    } else if (sub === 'create') {
-      const name = process.argv[4];
-      if (!name) throw new Error('skills create requires a name');
-      console.log(JSON.stringify(await app.skillLoader.createSkeleton(name), null, 2));
-    } else throw new Error(`Unknown skills subcommand: ${sub}`);
+    const app = await appRuntime();
+    console.log(JSON.stringify({ identity: app.identityManager.public(), state: app.stateEngine.getState(), models: app.modelRouter.getHealth(), skills: app.skillLoader.list(), channels: app.channelRegistry.list(), personas: app.personaManager.list() }, null, 2));
+  } else if (command === 'identity') {
+    await handleIdentity();
   } else if (command === 'personas') {
-    const app = await createTunaFlowRuntime(await loadConfig());
+    const app = await appRuntime();
     console.log(JSON.stringify(app.personaManager.list(), null, 2));
   } else if (command === 'persona') {
-    const sub = process.argv[3] || 'active';
-    const app = await createTunaFlowRuntime(await loadConfig());
-    if (sub === 'active') console.log(JSON.stringify(app.personaManager.getActive(), null, 2));
-    else if (sub === 'set' || sub === 'activate' || sub === 'switch') {
-      const name = process.argv[4];
-      if (!name) throw new Error('persona set requires a persona name');
-      console.log(JSON.stringify(await app.personaManager.activate(name, { source: 'cli' }), null, 2));
-    } else if (sub === 'acquire') {
-      const skillName = process.argv[4];
-      const personaName = process.argv[5] || app.personaManager.getActiveId();
-      if (!skillName) throw new Error('persona acquire requires a skill name');
-      console.log(JSON.stringify(await app.personaManager.acquireSkill(skillName, { personaId: personaName, skillLoader: app.skillLoader, metadata: { source: 'cli' } }), null, 2));
-    } else if (sub === 'release') {
-      const skillName = process.argv[4];
-      const personaName = process.argv[5] || app.personaManager.getActiveId();
-      if (!skillName) throw new Error('persona release requires a skill name');
-      console.log(JSON.stringify(await app.personaManager.releaseSkill(skillName, { personaId: personaName, metadata: { source: 'cli' } }), null, 2));
-    } else throw new Error(`Unknown persona subcommand: ${sub}`);
+    await handlePersona();
+  } else if (command === 'models' && process.argv[3] === 'catalog') {
+    const app = await appRuntime();
+    console.log(JSON.stringify(app.modelRouter.getCatalog(), null, 2));
+  } else if (command === 'skills') {
+    await handleSkills();
   } else if (command === 'channels') {
-    const app = await createTunaFlowRuntime(await loadConfig());
+    const app = await appRuntime();
     console.log(JSON.stringify(app.channelRegistry.list(), null, 2));
   } else if (command === 'approvals') {
     const status = process.argv[3] || null;
-    const app = await createTunaFlowRuntime(await loadConfig());
+    const app = await appRuntime();
     console.log(JSON.stringify(await app.permissionEngine.listApprovals({ status }), null, 2));
   } else if (command === 'approve' || command === 'reject') {
     const approvalId = process.argv[3];
     if (!approvalId) throw new Error(`${command} requires an approval id`);
     const note = process.argv.slice(4).join(' ');
-    const app = await createTunaFlowRuntime(await loadConfig());
-    const result = await app.runtime.resolveApproval(approvalId, command === 'approve' ? 'approved' : 'rejected', { note });
-    console.log(JSON.stringify(result, null, 2));
+    const app = await appRuntime();
+    console.log(JSON.stringify(await app.runtime.resolveApproval(approvalId, command === 'approve' ? 'approved' : 'rejected', { note }), null, 2));
   } else if (command === 'audit' && process.argv[3] === 'verify') {
-    const app = await createTunaFlowRuntime(await loadConfig());
+    const app = await appRuntime();
     console.log(JSON.stringify(await app.auditLog.verify(), null, 2));
+  } else if (command === 'secrets') {
+    await handleSecrets();
+  } else if (command === 'policy') {
+    const app = await appRuntime();
+    console.log(JSON.stringify(app.policyEngine.list(), null, 2));
+  } else if (command === 'tasks') {
+    await handleTasks();
   } else if (command === 'check' || command === 'doctor') {
-    const app = await createTunaFlowRuntime(await loadConfig());
-    console.log(JSON.stringify({
-      ok: true,
-      tools: app.toolRegistry.list().length,
-      activePersona: app.personaManager.getActive()?.name || null,
-      personas: app.personaManager.list().length,
-      skills: app.skillLoader.list().length,
-      channels: app.channelRegistry.list().length,
-      models: app.modelRouter.getHealth(),
-      audit: await app.auditLog.verify()
-    }, null, 2));
+    const app = await appRuntime();
+    console.log(JSON.stringify({ ok: true, identity: app.identityManager.public(), tools: app.toolRegistry.list().length, skills: app.skillLoader.list().length, channels: app.channelRegistry.list().length, personas: app.personaManager.list().length, models: app.modelRouter.getHealth(), audit: await app.auditLog.verify(), secrets: await app.secretsVault.list(), policy: app.policyEngine.list() }, null, 2));
   } else {
     printHelp();
   }
@@ -105,6 +72,80 @@ try {
   console.error(`[TunaFlowAI] ${error.message}`);
   if (process.env.DEBUG) console.error(error.stack);
   process.exitCode = 1;
+}
+
+async function appRuntime() {
+  return createTunaFlowRuntime(await loadConfig());
+}
+
+async function handleIdentity() {
+  const sub = process.argv[3] || 'show';
+  const app = await appRuntime();
+  if (sub === 'show') return console.log(JSON.stringify(app.identityManager.public(), null, 2));
+  if (sub === 'reset') return console.log(JSON.stringify(await app.identityManager.reset({ source: 'cli' }), null, 2));
+  if (sub === 'set') {
+    const patch = parseKeyValues(process.argv.slice(4));
+    return console.log(JSON.stringify(await app.identityManager.update(patch, { source: 'cli' }), null, 2));
+  }
+  throw new Error('identity commands: show | set key=value ... | reset');
+}
+
+async function handlePersona() {
+  const sub = process.argv[3] || 'active';
+  const app = await appRuntime();
+  if (sub === 'active') return console.log(JSON.stringify(app.personaManager.getActive(), null, 2));
+  if (sub === 'set' || sub === 'switch') return console.log(JSON.stringify(await app.personaManager.activate(process.argv[4], { source: 'cli' }), null, 2));
+  if (sub === 'acquire') return console.log(JSON.stringify(await app.personaManager.acquireSkill(process.argv[4], { personaName: process.argv[5], skillLoader: app.skillLoader, metadata: { source: 'cli' } }), null, 2));
+  if (sub === 'release') return console.log(JSON.stringify(await app.personaManager.releaseSkill(process.argv[4], { personaName: process.argv[5], metadata: { source: 'cli' } }), null, 2));
+  throw new Error('persona commands: active | set <name> | acquire <skill> [persona] | release <skill> [persona]');
+}
+
+async function handleSkills() {
+  const sub = process.argv[3] || 'list';
+  const app = await appRuntime();
+  if (sub === 'list') return console.log(JSON.stringify(app.skillLoader.list(), null, 2));
+  if (sub === 'jobs') return console.log(JSON.stringify(app.skillLoader.list().map((skill) => ({ name: skill.name, jobs: skill.jobs || [], risk: skill.risk, tools: skill.tools || [], trust: skill.trust })), null, 2));
+  if (sub === 'create') return console.log(JSON.stringify(await app.skillLoader.createSkeleton(process.argv[4]), null, 2));
+  if (sub === 'acquire') return console.log(JSON.stringify(await app.skillLoader.acquire(process.argv[4], { name: process.argv[5] }), null, 2));
+  if (sub === 'acquired') return console.log(JSON.stringify(await app.skillLoader.listAcquired(), null, 2));
+  if (sub === 'trust') return console.log(JSON.stringify(app.skillTrustRegistry.list(), null, 2));
+  if (sub === 'sign') return console.log(JSON.stringify(await app.skillTrustRegistry.signSkill(process.argv[4], { source: 'cli' }), null, 2));
+  if (sub === 'verify') return console.log(JSON.stringify(process.argv[4] ? await app.skillTrustRegistry.verifySkill(process.argv[4]) : await app.skillTrustRegistry.verifyLoadedSkills(app.skillLoader.list()), null, 2));
+  throw new Error('skills commands: list | jobs | create <name> | acquire <path/name> | acquired | trust | sign <path/name> | verify [path/name]');
+}
+
+async function handleSecrets() {
+  const sub = process.argv[3] || 'list';
+  const app = await appRuntime();
+  if (sub === 'list') return console.log(JSON.stringify(await app.secretsVault.list(), null, 2));
+  if (sub === 'set') return console.log(JSON.stringify(await app.secretsVault.set(process.argv[4], process.argv.slice(5).join(' '), { source: 'cli' }), null, 2));
+  if (sub === 'get') return console.log(JSON.stringify(await app.secretsVault.get(process.argv[4]), null, 2));
+  if (sub === 'delete') return console.log(JSON.stringify(await app.secretsVault.delete(process.argv[4]), null, 2));
+  throw new Error('secrets commands: list | set <name> <value> | get <name> | delete <name>');
+}
+
+async function handleTasks() {
+  const sub = process.argv[3] || 'list';
+  const app = await appRuntime();
+  if (sub === 'list') return console.log(JSON.stringify(app.stateEngine.getState().tasks || [], null, 2));
+  if (sub === 'create') return console.log(JSON.stringify(await app.stateEngine.createTask({ title: process.argv.slice(4).join(' ') || 'Untitled task' }), null, 2));
+  if (sub === 'budget') return console.log(JSON.stringify(await app.taskBudgetManager.setBudget(process.argv[4] || 'global', parseKeyValues(process.argv.slice(5), true)), null, 2));
+  if (sub === 'budgets') return console.log(JSON.stringify(app.taskBudgetManager.list(), null, 2));
+  throw new Error('tasks commands: list | create <title> | budget <taskId> key=value | budgets');
+}
+
+function parseKeyValues(args, numbers = false) {
+  const patch = {};
+  for (const arg of args) {
+    const idx = arg.indexOf('=');
+    if (idx === -1) continue;
+    const key = arg.slice(0, idx);
+    let value = arg.slice(idx + 1);
+    if (numbers && /^-?\d+(\.\d+)?$/.test(value)) value = Number(value);
+    if (key === 'boundaries' || key === 'traits') value = String(value).split(',').map((item) => item.trim()).filter(Boolean);
+    patch[key] = value;
+  }
+  return patch;
 }
 
 async function initProject() {
@@ -123,24 +164,36 @@ async function initProject() {
 }
 
 function defaultConfig() {
-  return `${JSON.stringify({
-    runtime: { name: 'TunaFlowAI', workspace: '.', dataDir: '.tunaflow', proactive: true, verifyToolResults: true },
-    server: { host: '127.0.0.1', port: 8787, apiTokenEnv: 'TUNAFLOW_API_TOKEN' },
-    models: [{ name: 'local-mock-fallback', provider: 'mock', behavior: 'ok', enabled: true }],
-    chains: { default: ['local-mock-fallback'] }
-  }, null, 2)}\n`;
+  return `${JSON.stringify({ runtime: { name: 'TunaFlowAI', workspace: '.', dataDir: '.tunaflow', proactive: true, verifyToolResults: true }, identity: { name: 'Tuna' }, server: { host: '127.0.0.1', port: 8787, apiTokenEnv: 'TUNAFLOW_API_TOKEN' }, models: [{ name: 'local-mock-fallback', provider: 'mock', behavior: 'ok', enabled: true }], chains: { default: ['local-mock-fallback'] } }, null, 2)}\n`;
 }
 
 function printHelp() {
-  console.log(`TunaFlowAI commands:\n\n  tunaflow init                         Create config/tunaflow.config.json\n  tunaflow dev                          Start local gateway and localhost dashboard\n  tunaflow chat <text>                  Emit a user.message event\n  tunaflow emit <type> <text>           Emit one event into the runtime\n  tunaflow status                       Print state and model health\n  tunaflow models catalog               Print provider presets and configured model capabilities\n  tunaflow dashboard                    Start local gateway and print dashboard URL
-  tunaflow personas                     List loaded personas
-  tunaflow persona active               Print active persona
-  tunaflow persona set <name>           Switch active persona
-  tunaflow persona acquire <skill> [persona] Enable a skill for a persona
-  tunaflow persona release <skill> [persona] Disable an acquired persona skill
-  tunaflow skills [list]                List loaded job skills
-  tunaflow skills jobs                  List skill jobs and persona mappings
-  tunaflow skills acquired              List acquired skills
-  tunaflow skills acquire <path|name>   Acquire a local job skill
-  tunaflow skills create <name>         Create a starter job skill\n  tunaflow channels                     List configured channels\n  tunaflow approvals [pending|approved|rejected]\n  tunaflow approve <approval_id> [note] Execute an approved pending action\n  tunaflow reject <approval_id> [note]  Reject a pending action\n  tunaflow audit verify                 Verify tamper-evident audit chain\n  tunaflow check                        Validate config/runtime\n\nExamples:\n  node src/cli.js dev\n  node src/cli.js chat "Watch my workspace and keep model usage efficient"\n  node src/cli.js emit terminal.output "Error: cannot find variable plans"\n`);
+  console.log(`TunaFlowAI commands:
+
+ tunaflow init                              Create config/tunaflow.config.json
+ tunaflow dev                               Start local gateway + dashboard
+ tunaflow chat <text>                       Emit a user.message event
+ tunaflow emit <type> <text>                Emit one event into the runtime
+ tunaflow status                            Print state and runtime status
+ tunaflow identity show                     Show assistant name/personality
+ tunaflow identity set name=Tuna personality="calm analyst"
+ tunaflow persona active|set|acquire|release
+ tunaflow models catalog                    Print provider presets
+ tunaflow skills list|jobs|create|acquire|acquired|trust|sign|verify
+ tunaflow channels                          List configured channels
+ tunaflow approvals [pending|approved|rejected]
+ tunaflow approve <approval_id> [note]
+ tunaflow reject <approval_id> [note]
+ tunaflow secrets list|set|get|delete
+ tunaflow policy                            Print policy-as-code config
+ tunaflow tasks list|create|budget|budgets
+ tunaflow audit verify                      Verify tamper-evident audit chain
+ tunaflow check                             Validate config/runtime
+
+Examples:
+ node src/cli.js dev
+ node src/cli.js identity set name=Anna personality="friendly, proactive, careful"
+ node src/cli.js persona set financial-analyst
+ node src/cli.js emit market.alert "BTC volume spike"
+`);
 }

@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "defaultAction": "require_approval",
+  "riskDefaults": {
+    "low": "allow",
+    "medium": "require_approval",
+    "high": "require_approval",
+    "critical": "deny"
+  },
+  "rules": [
+    {
+      "id": "block-secrets",
+      "when": { "tool": ["read_file", "browser_fetch"], "argsContains": [".env", "id_rsa", "vault.key", "secrets.enc.json"] },
+      "action": "deny",
+      "reason": "Secret-looking files are blocked by default. Use the secrets vault instead."
+    },
+    {
+      "id": "block-dangerous-shell",
+      "when": { "tool": "run_command", "argsContains": ["rm -rf", "git push", "git reset --hard", "npm publish", "pnpm publish", "curl | sh", "wget | sh"] },
+      "action": "deny",
+      "reason": "Dangerous shell command pattern."
+    },
+    {
+      "id": "approve-shell",
+      "when": { "tool": "run_command" },
+      "action": "require_approval",
+      "reason": "Shell execution requires explicit approval."
+    },
+    {
+      "id": "approve-ticket-and-files",
+      "when": { "tool": ["write_file", "edit_file", "append_file", "create_support_ticket", "update_spreadsheet", "generate_invoice"] },
+      "action": "require_approval",
+      "reason": "Workspace mutation requires approval."
+    }
+  ]
+}

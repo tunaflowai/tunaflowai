@@ -4,11 +4,16 @@ import { createId, ensureDir, now, readJson, writeJsonAtomic } from './utils.js'
 const IMPORTANT_EVENT_TYPES = new Set([
   'user.message',
   'chat.message',
+  'channel.message',
   'terminal.output',
   'file.changed',
   'browser.page_changed',
-  'agent.result_failed',
-  'approval.resolved'
+  'market.alert',
+  'server.down',
+  'customer.complaint',
+  'finance.report_requested',
+  'approval.resolved',
+  'agent.result_failed'
 ]);
 
 export class StateEngine {
@@ -25,11 +30,13 @@ export class StateEngine {
       this.state = freshState();
       await this.save();
     }
-    this.state.version = 2;
+    this.state.version = 3;
     this.state.tasks ||= [];
     this.state.runs ||= [];
     this.state.recentEvents ||= [];
     this.state.recentErrors ||= [];
+    this.state.marketAlerts ||= [];
+    this.state.customerIssues ||= [];
   }
 
   async save() {
@@ -46,13 +53,13 @@ export class StateEngine {
 
     if (IMPORTANT_EVENT_TYPES.has(event.type)) {
       this.state.recentEvents.push(minifyEvent(event));
-      this.state.recentEvents = this.state.recentEvents.slice(-75);
+      this.state.recentEvents = this.state.recentEvents.slice(-100);
     }
 
-    if (event.type === 'user.message' || event.type === 'chat.message') {
+    if (event.type === 'user.message' || event.type === 'chat.message' || event.type === 'channel.message') {
       const text = event.text || event.payload?.text || '';
       this.state.lastUserInstruction = text;
-      this.state.activeTask = this.state.activeTask || this.createTaskObject({ title: text.slice(0, 120), sourceEventId: event.id });
+      this.state.activeTask = this.state.activeTask || this.createTaskObject({ title: text.slice(0, 120), sourceEventId: event.id, type: 'conversation' });
       if (!this.state.tasks.some((task) => task.id === this.state.activeTask.id)) this.state.tasks.push(this.state.activeTask);
     }
 
@@ -61,35 +68,40 @@ export class StateEngine {
     }
 
     if (event.type === 'browser.page_changed') {
-      this.state.currentPage = {
-        url: event.url || event.payload?.url || null,
-        title: event.title || event.payload?.title || null,
-        seenAt: now()
-      };
+      this.state.currentPage = { url: event.url || event.payload?.url || null, title: event.title || event.payload?.title || null, seenAt: now() };
     }
 
     if (event.type === 'terminal.output') {
       const text = event.text || event.payload?.text || '';
       if (/error|failed|exception|traceback|cannot|not found/i.test(text)) {
-        this.state.recentErrors.push({
-          text: text.slice(0, 1000),
-          eventId: event.id,
-          seenAt: now()
-        });
-        this.state.recentErrors = this.state.recentErrors.slice(-15);
+        this.state.recentErrors.push({ text: text.slice(0, 1000), eventId: event.id, seenAt: now() });
+        this.state.recentErrors = this.state.recentErrors.slice(-20);
       }
+    }
+
+    if (event.type === 'market.alert') {
+      this.state.marketAlerts.push({ eventId: event.id, asset: event.asset || event.payload?.asset, text: event.text, seenAt: now() });
+      this.state.marketAlerts = this.state.marketAlerts.slice(-50);
+    }
+
+    if (event.type === 'customer.complaint') {
+      this.state.customerIssues.push({ eventId: event.id, text: event.text, channel: event.channel, seenAt: now() });
+      this.state.customerIssues = this.state.customerIssues.slice(-50);
     }
 
     await this.save();
     return this.getState();
   }
 
-  createTaskObject({ title, sourceEventId = null }) {
+  createTaskObject({ title, sourceEventId = null, type = 'general', budget = null }) {
     return {
       id: createId('task'),
+      type,
       title: title || 'Untitled task',
       status: 'active',
+      budget,
       sourceEventId,
+      evidence: [],
       createdAt: now(),
       updatedAt: now()
     };
@@ -114,10 +126,23 @@ export class StateEngine {
     return task;
   }
 
+  async addTaskEvidence(taskId, evidence = {}) {
+    if (!this.state) await this.init();
+    const task = this.state.tasks.find((item) => item.id === taskId);
+    if (!task) throw new Error(`Unknown task: ${taskId}`);
+    task.evidence ||= [];
+    task.evidence.push({ ...evidence, addedAt: now() });
+    task.evidence = task.evidence.slice(-50);
+    task.updatedAt = now();
+    if (this.state.activeTask?.id === taskId) this.state.activeTask = { ...task };
+    await this.save();
+    return task;
+  }
+
   async recordRun(run) {
     if (!this.state) await this.init();
     this.state.runs.push({ ...run, recordedAt: now() });
-    this.state.runs = this.state.runs.slice(-100);
+    this.state.runs = this.state.runs.slice(-150);
     await this.save();
   }
 
@@ -128,7 +153,7 @@ export class StateEngine {
 
 function freshState() {
   return {
-    version: 2,
+    version: 3,
     activeTask: null,
     lastUserInstruction: null,
     currentApp: null,
@@ -136,6 +161,8 @@ function freshState() {
     currentPage: null,
     recentErrors: [],
     recentEvents: [],
+    marketAlerts: [],
+    customerIssues: [],
     tasks: [],
     runs: [],
     updatedAt: now()
@@ -151,6 +178,9 @@ function minifyEvent(event) {
     text: event.text ? event.text.slice(0, 500) : undefined,
     path: event.path,
     url: event.url,
-    title: event.title
+    title: event.title,
+    channel: event.channel,
+    conversationId: event.conversationId,
+    asset: event.asset || event.payload?.asset
   };
 }
