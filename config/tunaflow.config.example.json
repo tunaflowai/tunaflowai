@@ -1,0 +1,48 @@
+{
+  "runtime": {
+    "name": "TunaFlow",
+    "workspace": ".",
+    "dataDir": ".tunaflow",
+    "proactive": true
+  },
+  "server": {
+    "host": "127.0.0.1",
+    "port": 8787
+  },
+  "tokenBudget": {
+    "maxInputTokens": 8000,
+    "maxOutputTokens": 1200,
+    "maxModelCallsPerEvent": 3
+  },
+  "fallback": {
+    "timeoutMs": 20000,
+    "cooldownMs": 30000,
+    "maxFailuresBeforeCooldown": 2
+  },
+  "models": [
+    {
+      "name": "primary-openai-compatible",
+      "provider": "openai-compatible",
+      "baseUrl": "https://api.openai.com/v1",
+      "apiKeyEnv": "OPENAI_API_KEY",
+      "model": "YOUR_MODEL_NAME",
+      "enabled": false
+    },
+    {
+      "name": "local-mock-fallback",
+      "provider": "mock",
+      "behavior": "ok",
+      "enabled": true
+    }
+  ],
+  "chains": {
+    "default": ["primary-openai-compatible", "local-mock-fallback"],
+    "cheap": ["local-mock-fallback"],
+    "strong": ["primary-openai-compatible", "local-mock-fallback"]
+  },
+  "permissions": {
+    "autoApproveMedium": false,
+    "autoApproveHigh": false,
+    "blockedTools": []
+  }
+}
