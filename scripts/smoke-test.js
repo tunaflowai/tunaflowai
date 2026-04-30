@@ -124,4 +124,4 @@ for (const [name, fn] of tests) {
 console.log(`\n${tests.length} smoke tests passed`);
 
 // Keep the dependency-free MVP test runner deterministic across Node/npm environments.
-setImmediate(() => process.exit(process.exitCode || 0));
+process.exit(process.exitCode || 0);

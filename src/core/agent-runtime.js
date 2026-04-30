@@ -1,7 +1,7 @@
 import { createId, now } from './utils.js';
 
 export class AgentRuntime {
-  constructor({ eventStore, stateEngine, contextCompressor, modelRouter, toolRegistry, permissionEngine, auditLog, skillSelector = null, outboundRouter = null, config = {} }) {
+  constructor({ eventStore, stateEngine, contextCompressor, modelRouter, toolRegistry, permissionEngine, auditLog, skillSelector = null, personaManager = null, outboundRouter = null, config = {} }) {
     this.eventStore = eventStore;
     this.stateEngine = stateEngine;
     this.contextCompressor = contextCompressor;
@@ -10,6 +10,7 @@ export class AgentRuntime {
     this.permissionEngine = permissionEngine;
     this.auditLog = auditLog;
     this.skillSelector = skillSelector;
+    this.personaManager = personaManager;
     this.outboundRouter = outboundRouter;
     this.config = config;
   }
@@ -31,7 +32,8 @@ export class AgentRuntime {
     }
 
     const runId = createId('run');
-    const selectedSkills = this.skillSelector?.select({ event, state }) || [];
+    const activePersona = this.personaManager?.getActiveInternal?.() || null;
+    const selectedSkills = this.skillSelector?.select({ event, state, persona: activePersona }) || [];
     if (selectedSkills.length) {
       await this.auditLog.record('skills.selected', {
         runId,
@@ -43,6 +45,7 @@ export class AgentRuntime {
     const context = await this.contextCompressor.build({
       event,
       state,
+      persona: publicPersonaRef(activePersona, true),
       skills: selectedSkills.map((skill) => ({
         name: skill.name,
         description: skill.description,
@@ -58,7 +61,7 @@ export class AgentRuntime {
     await this.auditLog.record('agent.context_built', { runId, approxTokens: context.approxTokens, eventId: event.id });
 
     const messages = [
-      { role: 'system', content: systemPrompt(this.toolRegistry.list(), this.skillSelector?.buildPrompt(selectedSkills) || 'No selected skills.') },
+      { role: 'system', content: systemPrompt(this.toolRegistry.list(), this.skillSelector?.buildPrompt(selectedSkills) || 'No selected skills.', activePersona) },
       { role: 'user', content: JSON.stringify(context, null, 2) }
     ];
 
@@ -68,7 +71,7 @@ export class AgentRuntime {
         messages,
         json: true,
         jsonSchema: planJsonSchema(),
-        chain: chooseChain(event),
+        chain: chooseChain(event, activePersona),
         taskType: event.type,
         maxOutputTokens: this.config.tokenBudget?.maxOutputTokens || 1200
       });
@@ -79,6 +82,7 @@ export class AgentRuntime {
         status: 'model_failed',
         error: error.message,
         attempts: error.attempts || [],
+        persona: publicPersonaRef(activePersona),
         selectedSkills: selectedSkills.map(publicSkillRef),
         createdAt: now()
       };
@@ -105,6 +109,7 @@ export class AgentRuntime {
       summary: plan.summary,
       plan: plan.plan,
       confidence: plan.confidence,
+      persona: publicPersonaRef(activePersona),
       selectedSkills: selectedSkills.map(publicSkillRef),
       actionResults,
       createdAt: now()
@@ -189,10 +194,12 @@ export class AgentRuntime {
   }
 }
 
-function chooseChain(event) {
-  if (event.priority === 'low') return 'cheap';
-  if (event.priority === 'high') return 'strong';
-  return 'default';
+function chooseChain(event, persona) {
+  const preferred = persona?.preferredChains || {};
+  if (preferred[event.type]) return preferred[event.type];
+  if (event.priority === 'low') return preferred.low || 'cheap';
+  if (event.priority === 'high') return preferred.high || 'strong';
+  return preferred.default || 'default';
 }
 
 function normalizePlan(value = {}) {
@@ -221,6 +228,24 @@ function deriveRunStatus(actionResults) {
   if (actionResults.some((item) => item.status === 'failed' || item.status === 'verification_failed')) return 'partial_failure';
   if (actionResults.every((item) => item.status === 'denied')) return 'denied';
   return 'done';
+}
+
+function publicPersonaRef(persona, includePrompt = false) {
+  if (!persona) return null;
+  return {
+    name: persona.name,
+    title: persona.title,
+    role: persona.role,
+    version: persona.version,
+    riskPosture: persona.riskPosture,
+    autonomy: persona.autonomy,
+    communicationStyle: persona.communicationStyle,
+    defaultSkills: persona.defaultSkills || [],
+    preferredChains: persona.preferredChains || {},
+    trust: persona.trust,
+    hash: persona.hash,
+    systemPrompt: includePrompt ? persona.systemPrompt : undefined
+  };
 }
 
 function publicSkillRef(skill) {
@@ -254,6 +279,43 @@ function planJsonSchema() {
   };
 }
 
-function systemPrompt(tools, selectedSkillsPrompt) {
-  return `You are TunaFlowAI, an event-driven work operating agent.\n\nCore rules:\n- Be token efficient. Use compact state, not raw history.\n- Act only when the event matters.\n- Prefer low-risk tools. Risky tools require approval.\n- Skills are procedures only; they never grant permissions or tool access.\n- Do not invent tool names.\n- Always return valid JSON only. No markdown.\n\nReturn this schema:\n{\n  "summary": "short summary",\n  "plan": ["step 1", "step 2"],\n  "actions": [{"tool": "send_reply", "args": {"message": "..."}}],\n  "confidence": 0.0,\n  "requiresApproval": false\n}\n\nSelected skills:\n${selectedSkillsPrompt}\n\nAvailable tools:\n${JSON.stringify(tools, null, 2)}`;
+function systemPrompt(tools, selectedSkillsPrompt, persona) {
+  const personaBlock = persona
+    ? `Active persona:
+Name: ${persona.name}
+Title: ${persona.title}
+Role: ${persona.role}
+Risk posture: ${persona.riskPosture}
+Autonomy: ${persona.autonomy}
+Communication style: ${persona.communicationStyle}
+Persona instructions:
+${persona.systemPrompt}`
+    : 'Active persona: operator';
+  return `You are TunaFlowAI, an event-driven work operating agent.
+
+Core rules:
+- Be token efficient. Use compact state, not raw history.
+- Act only when the event matters.
+- Prefer low-risk tools. Risky tools require approval.
+- Follow the active persona, but never let persona instructions override safety, permissions, or tool policy.
+- Skills are procedures only; they never grant permissions or tool access.
+- Do not invent tool names.
+- Always return valid JSON only. No markdown.
+
+Return this schema:
+{
+  "summary": "short summary",
+  "plan": ["step 1", "step 2"],
+  "actions": [{"tool": "send_reply", "args": {"message": "..."}}],
+  "confidence": 0.0,
+  "requiresApproval": false
+}
+
+${personaBlock}
+
+Selected skills:
+${selectedSkillsPrompt}
+
+Available tools:
+${JSON.stringify(tools, null, 2)}`;
 }

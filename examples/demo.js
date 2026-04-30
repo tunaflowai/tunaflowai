@@ -44,3 +44,5 @@ console.log(JSON.stringify(app.modelRouter.getHealth(), null, 2));
 console.log('\nAudit verification:\n');
 console.log(JSON.stringify(await app.auditLog.verify(), null, 2));
 console.log('\nAudit log saved in .tunaflow-demo/audit.jsonl\n');
+
+process.exit(process.exitCode || 0);

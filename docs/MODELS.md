@@ -1,6 +1,6 @@
 # Model Provider Registry
 
-TunaFlowAI v0.3 adds a provider-aware model runtime. The model router still uses fallback chains, but each model now has provider metadata, capability metadata, health, usage, latency, cooldown, and attempts.
+TunaFlowAI v0.4 adds a provider-aware model runtime. The model router still uses fallback chains, but each model now has provider metadata, capability metadata, health, usage, latency, cooldown, and attempts.
 
 ## Supported provider families
 

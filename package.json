@@ -1,7 +1,7 @@
 {
   "name": "tunaflow",
-  "version": "0.3.0-alpha.0",
-  "description": "TunaFlowAI: an event-driven AI work operating agent with model fallback, provider registry, skills, channel adapters, approvals, and audit logs.",
+  "version": "0.4.0-alpha.0",
+  "description": "TunaFlowAI: an event-driven AI work operating agent with persona switching, model fallback, job skills, channel adapters, approvals, dashboard, and audit logs.",
   "type": "module",
   "private": false,
   "license": "MIT",
@@ -12,9 +12,10 @@
     "start": "node src/cli.js dev",
     "dev": "node src/cli.js dev",
     "demo": "node examples/demo.js",
-    "test": "node scripts/smoke-test.js && node scripts/run-tests.js",
+    "test": "node scripts/smoke-test.js",
     "check": "node src/cli.js check",
-    "doctor": "node src/cli.js doctor"
+    "doctor": "node src/cli.js doctor",
+    "test:files": "node scripts/run-tests.js"
   },
   "engines": {
     "node": ">=22.0.0"
@@ -40,7 +41,12 @@
     "telegram",
     "discord",
     "slack",
-    "whatsapp"
+    "whatsapp",
+    "personas",
+    "persona-switching",
+    "job-skills",
+    "localhost-dashboard",
+    "gui"
   ],
   "author": "TunaFlowAI contributors",
   "dependencies": {},

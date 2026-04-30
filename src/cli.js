@@ -7,9 +7,10 @@ import { pathExists } from './core/utils.js';
 const command = process.argv[2] || 'help';
 
 try {
-  if (command === 'dev' || command === 'start') {
+  if (command === 'dev' || command === 'start' || command === 'dashboard') {
     const { config } = await startGateway();
     console.log(`TunaFlowAI gateway running on http://${config.server.host}:${config.server.port}`);
+    console.log(`Dashboard: http://${config.server.host}:${config.server.port}/dashboard`);
     console.log(`Workspace: ${config.runtime.workspace}`);
     console.log(`Data dir: ${config.runtime.dataDir}`);
   } else if (command === 'init') {
@@ -27,13 +28,47 @@ try {
     console.log(JSON.stringify(result, null, 2));
   } else if (command === 'status') {
     const app = await createTunaFlowRuntime(await loadConfig());
-    console.log(JSON.stringify({ state: app.stateEngine.getState(), models: app.modelRouter.getHealth(), skills: app.skillLoader.list(), channels: app.channelRegistry.list() }, null, 2));
+    console.log(JSON.stringify({ state: app.stateEngine.getState(), activePersona: app.personaManager.getActive(), models: app.modelRouter.getHealth(), skills: app.skillLoader.list(), channels: app.channelRegistry.list() }, null, 2));
   } else if (command === 'models' && process.argv[3] === 'catalog') {
     const app = await createTunaFlowRuntime(await loadConfig());
     console.log(JSON.stringify(app.modelRouter.getCatalog(), null, 2));
   } else if (command === 'skills') {
+    const sub = process.argv[3] || 'list';
     const app = await createTunaFlowRuntime(await loadConfig());
-    console.log(JSON.stringify(app.skillLoader.list(), null, 2));
+    if (sub === 'list') console.log(JSON.stringify(app.skillLoader.list(), null, 2));
+    else if (sub === 'jobs') console.log(JSON.stringify(app.personaManager.skillJobs({ skillLoader: app.skillLoader }), null, 2));
+    else if (sub === 'acquired') console.log(JSON.stringify(await app.skillLoader.listAcquired(), null, 2));
+    else if (sub === 'acquire') {
+      const source = process.argv[4];
+      if (!source) throw new Error('skills acquire requires a local path or loaded skill name');
+      console.log(JSON.stringify(await app.skillLoader.acquire(source, { name: process.argv[5] }), null, 2));
+    } else if (sub === 'create') {
+      const name = process.argv[4];
+      if (!name) throw new Error('skills create requires a name');
+      console.log(JSON.stringify(await app.skillLoader.createSkeleton(name), null, 2));
+    } else throw new Error(`Unknown skills subcommand: ${sub}`);
+  } else if (command === 'personas') {
+    const app = await createTunaFlowRuntime(await loadConfig());
+    console.log(JSON.stringify(app.personaManager.list(), null, 2));
+  } else if (command === 'persona') {
+    const sub = process.argv[3] || 'active';
+    const app = await createTunaFlowRuntime(await loadConfig());
+    if (sub === 'active') console.log(JSON.stringify(app.personaManager.getActive(), null, 2));
+    else if (sub === 'set' || sub === 'activate' || sub === 'switch') {
+      const name = process.argv[4];
+      if (!name) throw new Error('persona set requires a persona name');
+      console.log(JSON.stringify(await app.personaManager.activate(name, { source: 'cli' }), null, 2));
+    } else if (sub === 'acquire') {
+      const skillName = process.argv[4];
+      const personaName = process.argv[5] || app.personaManager.getActiveId();
+      if (!skillName) throw new Error('persona acquire requires a skill name');
+      console.log(JSON.stringify(await app.personaManager.acquireSkill(skillName, { personaId: personaName, skillLoader: app.skillLoader, metadata: { source: 'cli' } }), null, 2));
+    } else if (sub === 'release') {
+      const skillName = process.argv[4];
+      const personaName = process.argv[5] || app.personaManager.getActiveId();
+      if (!skillName) throw new Error('persona release requires a skill name');
+      console.log(JSON.stringify(await app.personaManager.releaseSkill(skillName, { personaId: personaName, metadata: { source: 'cli' } }), null, 2));
+    } else throw new Error(`Unknown persona subcommand: ${sub}`);
   } else if (command === 'channels') {
     const app = await createTunaFlowRuntime(await loadConfig());
     console.log(JSON.stringify(app.channelRegistry.list(), null, 2));
@@ -56,6 +91,8 @@ try {
     console.log(JSON.stringify({
       ok: true,
       tools: app.toolRegistry.list().length,
+      activePersona: app.personaManager.getActive()?.name || null,
+      personas: app.personaManager.list().length,
       skills: app.skillLoader.list().length,
       channels: app.channelRegistry.list().length,
       models: app.modelRouter.getHealth(),
@@ -95,5 +132,15 @@ function defaultConfig() {
 }
 
 function printHelp() {
-  console.log(`TunaFlowAI commands:\n\n  tunaflow init                         Create config/tunaflow.config.json\n  tunaflow dev                          Start local gateway\n  tunaflow chat <text>                  Emit a user.message event\n  tunaflow emit <type> <text>           Emit one event into the runtime\n  tunaflow status                       Print state and model health\n  tunaflow models catalog               Print provider presets and configured model capabilities\n  tunaflow skills                       List loaded skills\n  tunaflow channels                     List configured channels\n  tunaflow approvals [pending|approved|rejected]\n  tunaflow approve <approval_id> [note] Execute an approved pending action\n  tunaflow reject <approval_id> [note]  Reject a pending action\n  tunaflow audit verify                 Verify tamper-evident audit chain\n  tunaflow check                        Validate config/runtime\n\nExamples:\n  node src/cli.js dev\n  node src/cli.js chat "Watch my workspace and keep model usage efficient"\n  node src/cli.js emit terminal.output "Error: cannot find variable plans"\n`);
+  console.log(`TunaFlowAI commands:\n\n  tunaflow init                         Create config/tunaflow.config.json\n  tunaflow dev                          Start local gateway and localhost dashboard\n  tunaflow chat <text>                  Emit a user.message event\n  tunaflow emit <type> <text>           Emit one event into the runtime\n  tunaflow status                       Print state and model health\n  tunaflow models catalog               Print provider presets and configured model capabilities\n  tunaflow dashboard                    Start local gateway and print dashboard URL
+  tunaflow personas                     List loaded personas
+  tunaflow persona active               Print active persona
+  tunaflow persona set <name>           Switch active persona
+  tunaflow persona acquire <skill> [persona] Enable a skill for a persona
+  tunaflow persona release <skill> [persona] Disable an acquired persona skill
+  tunaflow skills [list]                List loaded job skills
+  tunaflow skills jobs                  List skill jobs and persona mappings
+  tunaflow skills acquired              List acquired skills
+  tunaflow skills acquire <path|name>   Acquire a local job skill
+  tunaflow skills create <name>         Create a starter job skill\n  tunaflow channels                     List configured channels\n  tunaflow approvals [pending|approved|rejected]\n  tunaflow approve <approval_id> [note] Execute an approved pending action\n  tunaflow reject <approval_id> [note]  Reject a pending action\n  tunaflow audit verify                 Verify tamper-evident audit chain\n  tunaflow check                        Validate config/runtime\n\nExamples:\n  node src/cli.js dev\n  node src/cli.js chat "Watch my workspace and keep model usage efficient"\n  node src/cli.js emit terminal.output "Error: cannot find variable plans"\n`);
 }

@@ -1,7 +1,8 @@
 import http from 'node:http';
 import { limitNumber } from './utils.js';
+import { renderDashboardHtml } from '../dashboard/dashboard.js';
 
-export function createGateway({ runtime, eventStore, stateEngine, auditLog, modelRouter, toolRegistry, permissionEngine, skillLoader = null, channelRegistry = null, host = '127.0.0.1', port = 8787, config = {} }) {
+export function createGateway({ runtime, eventStore, stateEngine, auditLog, modelRouter, toolRegistry, permissionEngine, personaManager = null, skillLoader = null, channelRegistry = null, host = '127.0.0.1', port = 8787, config = {} }) {
   const serverConfig = config.server || {};
   const apiToken = serverConfig.apiToken || process.env[serverConfig.apiTokenEnv || 'TUNAFLOW_API_TOKEN'];
   const bodyLimitBytes = serverConfig.bodyLimitBytes || 1024 * 1024;
@@ -15,6 +16,10 @@ export function createGateway({ runtime, eventStore, stateEngine, auditLog, mode
 
       if (apiToken && !isPublicEndpoint(req.method, url.pathname) && !isAuthorized(req, apiToken)) {
         return sendJson(res, 401, { error: 'Unauthorized' });
+      }
+
+      if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/dashboard' || url.pathname === '/dashboard/')) {
+        return sendHtml(res, 200, renderDashboardHtml());
       }
 
       if (req.method === 'GET' && url.pathname === '/health') {
@@ -50,13 +55,92 @@ export function createGateway({ runtime, eventStore, stateEngine, auditLog, mode
       if (req.method === 'GET' && url.pathname === '/skills') {
         return sendJson(res, 200, skillLoader?.list?.() || []);
       }
+      if (req.method === 'GET' && url.pathname === '/skills/acquired') {
+        return sendJson(res, 200, await skillLoader?.listAcquired?.() || []);
+      }
+      if (req.method === 'GET' && url.pathname === '/skill-jobs') {
+        const skills = skillLoader?.list?.() || [];
+        return sendJson(res, 200, skills.map((skill) => ({
+          skill: skill.name,
+          job: skill.job || (skill.jobs || [])[0] || null,
+          jobs: skill.jobs || [],
+          risk: skill.risk,
+          personas: skill.personas || [],
+          tools: skill.tools || [],
+          trust: skill.trust,
+          description: skill.description
+        })));
+      }
+      if (req.method === 'GET' && url.pathname === '/personas') {
+        return sendJson(res, 200, personaManager?.list?.() || []);
+      }
+      if (req.method === 'GET' && (url.pathname === '/personas/active' || url.pathname === '/personas/current')) {
+        return sendJson(res, 200, personaManager?.getActive?.() || null);
+      }
+      const personaSkillMatch = url.pathname.match(/^\/personas\/([^/]+)\/skills\/(acquire|release)$/);
+      if (req.method === 'POST' && personaSkillMatch) {
+        if (!personaManager) return sendJson(res, 500, { error: 'Persona manager is not available' });
+        const [, encodedPersonaId, action] = personaSkillMatch;
+        const body = await readBody(req, bodyLimitBytes);
+        const skillName = body.skillName || body.skill || body.name;
+        if (!skillName) return sendJson(res, 400, { error: 'skillName is required' });
+        const personaId = decodeURIComponent(encodedPersonaId);
+        const result = action === 'acquire'
+          ? await personaManager.acquireSkill(skillName, { personaId, skillLoader, metadata: { ...body, source: 'http-api' } })
+          : await personaManager.releaseSkill(skillName, { personaId, metadata: { ...body, source: 'http-api' } });
+        return sendJson(res, 200, result);
+      }
+
       if (req.method === 'GET' && url.pathname === '/channels') {
         return sendJson(res, 200, channelRegistry?.list?.() || []);
       }
+      if (req.method === 'GET' && url.pathname === '/overview') {
+        const limit = limitNumber(url.searchParams.get('limit'), 25, { min: 1, max: 100 });
+        return sendJson(res, 200, {
+          health: { ok: true, models: modelRouter.getHealth() },
+          state: stateEngine.getState(),
+          runs: stateEngine.getRuns(limit),
+          events: await eventStore.recent(limit),
+          audit: await auditLog.recent(limit),
+          auditVerification: await auditLog.verify(),
+          models: modelRouter.getHealth(),
+          modelCatalog: modelRouter.getCatalog(),
+          tools: toolRegistry.list(),
+          skills: skillLoader?.list?.() || [],
+          acquiredSkills: await skillLoader?.listAcquired?.() || [],
+          personas: personaManager?.list?.() || [],
+          activePersona: personaManager?.getActive?.() || null,
+          channels: channelRegistry?.list?.() || [],
+          approvals: await permissionEngine.listApprovals({ status: 'pending', limit })
+        });
+      }
+
       if (req.method === 'GET' && url.pathname === '/approvals') {
         const status = url.searchParams.get('status');
         const limit = limitNumber(url.searchParams.get('limit'), 100, { min: 1, max: 500 });
         return sendJson(res, 200, await permissionEngine.listApprovals({ status, limit }));
+      }
+
+      if (req.method === 'POST' && (url.pathname === '/skills/acquire' || url.pathname === '/skills/install')) {
+        const body = await readBody(req, bodyLimitBytes);
+        const record = await skillLoader.acquire(body.source, { name: body.name });
+        return sendJson(res, 200, { ok: true, acquired: record, installed: record, skills: skillLoader.list() });
+      }
+      if (req.method === 'POST' && url.pathname === '/skills/reload') {
+        return sendJson(res, 200, { ok: true, skills: await skillLoader.reload() });
+      }
+
+      if (req.method === 'POST' && url.pathname === '/personas/switch') {
+        const body = await readBody(req, bodyLimitBytes);
+        const persona = await personaManager.activate(body.name || body.id, body || {});
+        return sendJson(res, 200, { ok: true, ...persona, persona });
+      }
+
+      const personaActivateMatch = url.pathname.match(/^\/personas\/([^/]+)\/activate$/);
+      if (req.method === 'POST' && personaActivateMatch) {
+        const body = await readBody(req, bodyLimitBytes);
+        const persona = await personaManager.activate(decodeURIComponent(personaActivateMatch[1]), body || {});
+        return sendJson(res, 200, { ok: true, ...persona, persona });
       }
 
       const approvalMatch = url.pathname.match(/^\/approvals\/([^/]+)\/(approve|reject)$/);
@@ -121,7 +205,7 @@ export function createGateway({ runtime, eventStore, stateEngine, auditLog, mode
 }
 
 function isPublicEndpoint(method, pathname) {
-  return method === 'GET' && pathname === '/health';
+  return method === 'GET' && (pathname === '/health' || pathname === '/' || pathname === '/dashboard' || pathname === '/dashboard/');
 }
 
 function isAuthorized(req, token) {
@@ -131,7 +215,7 @@ function isAuthorized(req, token) {
 
 function setCors(res, origin) {
   res.setHeader('access-control-allow-origin', origin);
-  res.setHeader('access-control-allow-methods', 'GET,POST,OPTIONS');
+  res.setHeader('access-control-allow-methods', 'GET,POST,DELETE,OPTIONS');
   res.setHeader('access-control-allow-headers', 'content-type,authorization');
 }
 
@@ -156,4 +240,9 @@ function sendJson(res, status, body) {
 function sendText(res, status, text) {
   res.writeHead(status, { 'content-type': 'text/plain; charset=utf-8' });
   res.end(text);
+}
+
+function sendHtml(res, status, html) {
+  res.writeHead(status, { 'content-type': 'text/html; charset=utf-8' });
+  res.end(html);
 }

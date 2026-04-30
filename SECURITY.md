@@ -36,3 +36,24 @@ TunaFlowAI is currently a local-first alpha runtime. It is designed for trusted 
 ## Report a vulnerability
 
 Please open a private security advisory on GitHub or contact the maintainers through the repository security channel.
+
+## Persona and skill safety
+
+TunaFlowAI v0.4 adds personas and acquired job skills.
+
+Personas and skills are behavioral instructions only. They do not grant capabilities. The permission engine, tool risk levels, workspace boundaries, and audit log remain authoritative.
+
+Remote skill acquisition is disabled in the dependency-free alpha. Review third-party skill folders locally before acquiring them with `tunaflow skills acquire`.
+
+Recommended review checklist for third-party skills/personas:
+
+```text
+- no instruction to bypass approvals
+- no instruction to reveal secrets
+- no install script requirement
+- no hidden network exfiltration instruction
+- no request to disable audit logging
+- minimal declared tool requirements
+```
+
+The localhost dashboard is intended for trusted local use. If `TUNAFLOW_API_TOKEN` is configured, unsafe endpoints require `Authorization: Bearer <token>`. Do not expose the dashboard directly to the public internet.

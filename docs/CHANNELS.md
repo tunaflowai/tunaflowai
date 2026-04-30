@@ -1,6 +1,6 @@
 # Channel Adapters
 
-TunaFlowAI v0.3 introduces a channel adapter layer. Channels normalize inbound messages into `WorkEvent` objects and route `send_reply` back to the right destination.
+TunaFlowAI v0.4 introduces a channel adapter layer. Channels normalize inbound messages into `WorkEvent` objects and route `send_reply` back to the right destination.
 
 ## Current adapters
 

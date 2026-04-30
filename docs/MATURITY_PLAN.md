@@ -1,8 +1,8 @@
 # Maturity Plan
 
-This package moves TunaFlowAI toward v0.3, but it is still not a fully production-safe autonomous worker. The highest-impact remaining work is below.
+This package moves TunaFlowAI toward v0.4, but it is still not a fully production-safe autonomous worker. The highest-impact remaining work is below.
 
-## v0.3 closeout
+## v0.4 closeout
 
 - Add provider integration tests with mocked HTTP responses.
 - Add endpoint tests for `/models/catalog`, `/skills`, `/channels`, and `/channels/:id/webhook`.

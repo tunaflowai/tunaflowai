@@ -5,14 +5,16 @@
     "dataDir": ".tunaflow",
     "proactive": true,
     "verifyToolResults": true,
-    "maxActionsPerRun": 8
+    "maxActionsPerRun": 8,
+    "defaultPersona": "operator"
   },
   "server": {
     "host": "127.0.0.1",
     "port": 8787,
     "apiTokenEnv": "TUNAFLOW_API_TOKEN",
     "corsOrigin": "http://127.0.0.1:8787",
-    "bodyLimitBytes": 1048576
+    "bodyLimitBytes": 1048576,
+    "dashboard": true
   },
   "context": {
     "maxRecentEvents": 8,
@@ -25,7 +27,9 @@
     "allowUserSkills": false,
     "maxSkills": 3,
     "maxSkillChars": 3500,
-    "paths": []
+    "paths": [],
+    "acquired": true,
+    "acquiredDir": ".tunaflow/skills/acquired"
   },
   "channels": {
     "webhook": {
@@ -132,10 +136,29 @@
     }
   ],
   "chains": {
-    "default": ["openai-main", "gemini-flash", "deepseek", "local-mock-fallback"],
-    "cheap": ["gemini-flash", "qwen-plus", "ollama-local", "local-mock-fallback"],
-    "strong": ["anthropic-sonnet", "openai-main", "deepseek", "kimi", "local-mock-fallback"],
-    "local": ["ollama-local", "local-mock-fallback"]
+    "default": [
+      "openai-main",
+      "gemini-flash",
+      "deepseek",
+      "local-mock-fallback"
+    ],
+    "cheap": [
+      "gemini-flash",
+      "qwen-plus",
+      "ollama-local",
+      "local-mock-fallback"
+    ],
+    "strong": [
+      "anthropic-sonnet",
+      "openai-main",
+      "deepseek",
+      "kimi",
+      "local-mock-fallback"
+    ],
+    "local": [
+      "ollama-local",
+      "local-mock-fallback"
+    ]
   },
   "permissions": {
     "autoApproveMedium": false,
@@ -143,9 +166,35 @@
     "blockedTools": []
   },
   "tools": {
-    "commandAllowlist": ["node", "npm", "pnpm", "yarn", "git", "python", "python3"],
-    "commandDenyPatterns": ["git push", "git reset --hard", "npm publish", "pnpm publish", "yarn publish", "rm -rf", "curl | sh", "wget | sh"],
+    "commandAllowlist": [
+      "node",
+      "npm",
+      "pnpm",
+      "yarn",
+      "git",
+      "python",
+      "python3"
+    ],
+    "commandDenyPatterns": [
+      "git push",
+      "git reset --hard",
+      "npm publish",
+      "pnpm publish",
+      "yarn publish",
+      "rm -rf",
+      "curl | sh",
+      "wget | sh"
+    ],
     "defaultCommandTimeoutMs": 30000,
     "maxCommandOutputChars": 6000
+  },
+  "personas": {
+    "enabled": true,
+    "default": "operator",
+    "bundled": true,
+    "allowWorkspacePersonas": false,
+    "allowUserPersonas": false,
+    "maxPersonaChars": 5000,
+    "paths": []
   }
 }

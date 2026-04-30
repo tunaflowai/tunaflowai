@@ -13,6 +13,7 @@ import { SkillLoader } from './skills/skill-loader.js';
 import { SkillSelector } from './skills/skill-selector.js';
 import { ChannelRegistry } from './channels/channel-registry.js';
 import { OutboundRouter } from './channels/outbound-router.js';
+import { PersonaManager } from './personas/persona-manager.js';
 
 export async function loadConfig(configPath = process.env.TUNAFLOW_CONFIG || 'config/tunaflow.config.example.json') {
   const resolved = path.resolve(configPath);
@@ -24,6 +25,7 @@ export async function loadConfig(configPath = process.env.TUNAFLOW_CONFIG || 'co
   config.server.port = Number(process.env.TUNAFLOW_PORT || config.server.port || 8787);
   config.server.host = process.env.TUNAFLOW_HOST || config.server.host || '127.0.0.1';
   config.skills = config.skills || {};
+  config.personas = config.personas || {};
   config.channels = config.channels || {};
   return config;
 }
@@ -34,6 +36,7 @@ export async function createTunaFlowRuntime(config = null) {
   effectiveConfig.permissions ||= {};
   effectiveConfig.tools ||= {};
   effectiveConfig.skills ||= {};
+  effectiveConfig.personas ||= {};
   effectiveConfig.channels ||= {};
 
   const dataDir = effectiveConfig.runtime.dataDir;
@@ -41,8 +44,8 @@ export async function createTunaFlowRuntime(config = null) {
 
   const auditLog = new AuditLog({ dataDir });
   // Initialize the audit log before any subsystem records startup events.
-  // Otherwise repeated `check`/`doctor` runs can append a new hash chain
-  // starting from sequence 1 instead of continuing the existing chain.
+  // Without this, repeated `check`/`doctor` runs can append a new hash
+  // chain starting from sequence 1 instead of continuing the existing log.
   await auditLog.init();
 
   const eventStore = new EventStore({ dataDir });
@@ -53,7 +56,9 @@ export async function createTunaFlowRuntime(config = null) {
   const outboundRouter = new OutboundRouter({ channelRegistry, dataDir, auditLog });
   const toolRegistry = new ToolRegistry({ workspace, auditLog, config: effectiveConfig.tools || {} });
   const permissionEngine = new PermissionEngine({ dataDir, config: effectiveConfig.permissions || {}, auditLog });
-  const skillLoader = new SkillLoader({ workspace, config: effectiveConfig.skills || {}, auditLog });
+  const personaManager = new PersonaManager({ workspace, dataDir, config: effectiveConfig.personas || {}, auditLog });
+  await personaManager.init();
+  const skillLoader = new SkillLoader({ workspace, dataDir, config: effectiveConfig.skills || {}, auditLog });
   await skillLoader.init();
   const skillSelector = new SkillSelector({ skillLoader, config: effectiveConfig.skills || {}, auditLog });
 
@@ -68,6 +73,7 @@ export async function createTunaFlowRuntime(config = null) {
     permissionEngine,
     auditLog,
     skillSelector,
+    personaManager,
     outboundRouter,
     config: effectiveConfig
   });
@@ -82,6 +88,7 @@ export async function createTunaFlowRuntime(config = null) {
     modelRouter,
     toolRegistry,
     permissionEngine,
+    personaManager,
     skillLoader,
     skillSelector,
     channelRegistry,
