@@ -1,7 +1,7 @@
 import { createId, now } from './utils.js';
 
 export class AgentRuntime {
-  constructor({ eventStore, stateEngine, contextCompressor, modelRouter, toolRegistry, permissionEngine, auditLog, config = {} }) {
+  constructor({ eventStore, stateEngine, contextCompressor, modelRouter, toolRegistry, permissionEngine, auditLog, skillSelector = null, outboundRouter = null, config = {} }) {
     this.eventStore = eventStore;
     this.stateEngine = stateEngine;
     this.contextCompressor = contextCompressor;
@@ -9,6 +9,8 @@ export class AgentRuntime {
     this.toolRegistry = toolRegistry;
     this.permissionEngine = permissionEngine;
     this.auditLog = auditLog;
+    this.skillSelector = skillSelector;
+    this.outboundRouter = outboundRouter;
     this.config = config;
   }
 
@@ -29,9 +31,26 @@ export class AgentRuntime {
     }
 
     const runId = createId('run');
+    const selectedSkills = this.skillSelector?.select({ event, state }) || [];
+    if (selectedSkills.length) {
+      await this.auditLog.record('skills.selected', {
+        runId,
+        eventId: event.id,
+        skills: selectedSkills.map((skill) => ({ name: skill.name, hash: skill.hash, trust: skill.trust, score: skill.score }))
+      });
+    }
+
     const context = await this.contextCompressor.build({
       event,
       state,
+      skills: selectedSkills.map((skill) => ({
+        name: skill.name,
+        description: skill.description,
+        tools: skill.tools,
+        risk: skill.risk,
+        trust: skill.trust,
+        hash: skill.hash
+      })),
       budget: this.config.tokenBudget || {},
       toolPolicy: this.config.permissions || {}
     });
@@ -39,7 +58,7 @@ export class AgentRuntime {
     await this.auditLog.record('agent.context_built', { runId, approxTokens: context.approxTokens, eventId: event.id });
 
     const messages = [
-      { role: 'system', content: systemPrompt(this.toolRegistry.list()) },
+      { role: 'system', content: systemPrompt(this.toolRegistry.list(), this.skillSelector?.buildPrompt(selectedSkills) || 'No selected skills.') },
       { role: 'user', content: JSON.stringify(context, null, 2) }
     ];
 
@@ -48,6 +67,7 @@ export class AgentRuntime {
       modelResult = await this.modelRouter.complete({
         messages,
         json: true,
+        jsonSchema: planJsonSchema(),
         chain: chooseChain(event),
         taskType: event.type,
         maxOutputTokens: this.config.tokenBudget?.maxOutputTokens || 1200
@@ -59,6 +79,7 @@ export class AgentRuntime {
         status: 'model_failed',
         error: error.message,
         attempts: error.attempts || [],
+        selectedSkills: selectedSkills.map(publicSkillRef),
         createdAt: now()
       };
       await this.stateEngine.recordRun(run);
@@ -84,6 +105,7 @@ export class AgentRuntime {
       summary: plan.summary,
       plan: plan.plan,
       confidence: plan.confidence,
+      selectedSkills: selectedSkills.map(publicSkillRef),
       actionResults,
       createdAt: now()
     };
@@ -107,6 +129,7 @@ export class AgentRuntime {
       const result = await this.toolRegistry.execute(action, {
         dataDir: this.config.runtime?.dataDir,
         stateEngine: this.stateEngine,
+        outboundRouter: this.outboundRouter,
         event,
         runId,
         approvalId
@@ -154,11 +177,12 @@ export class AgentRuntime {
     if (action.tool === 'write_file' || action.tool === 'append_file' || action.tool === 'edit_file') {
       if (!result.path) return { ok: false, reason: 'file action returned no path' };
     }
+    if (action.tool === 'send_reply' && !result.message) return { ok: false, reason: 'send_reply returned no message' };
     return { ok: true, reason: 'basic verification passed' };
   }
 
   shouldTriggerAgent(event) {
-    if (event.type === 'user.message' || event.type === 'chat.message') return true;
+    if (event.type === 'user.message' || event.type === 'chat.message' || event.type === 'channel.message') return true;
     if (event.type === 'terminal.output') return /error|failed|exception|traceback|cannot|not found/i.test(event.text || event.payload?.text || '');
     if (event.type === 'agent.result_failed') return true;
     return Boolean(this.config.runtime?.proactive && event.priority === 'high');
@@ -199,6 +223,37 @@ function deriveRunStatus(actionResults) {
   return 'done';
 }
 
-function systemPrompt(tools) {
-  return `You are TunaFlowAI, an event-driven work operating agent.\n\nCore rules:\n- Be token efficient. Use compact state, not raw history.\n- Act only when the event matters.\n- Prefer low-risk tools. Risky tools require approval.\n- Do not invent tool names.\n- Always return valid JSON only. No markdown.\n\nReturn this schema:\n{\n  "summary": "short summary",\n  "plan": ["step 1", "step 2"],\n  "actions": [{"tool": "send_reply", "args": {"message": "..."}}],\n  "confidence": 0.0,\n  "requiresApproval": false\n}\n\nAvailable tools:\n${JSON.stringify(tools, null, 2)}`;
+function publicSkillRef(skill) {
+  return { name: skill.name, version: skill.version, trust: skill.trust, hash: skill.hash, score: skill.score };
+}
+
+function planJsonSchema() {
+  return {
+    name: 'tunaflow_plan',
+    strict: true,
+    schema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['summary', 'plan', 'actions', 'confidence', 'requiresApproval'],
+      properties: {
+        summary: { type: 'string' },
+        plan: { type: 'array', items: { type: 'string' } },
+        actions: {
+          type: 'array',
+          items: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['tool', 'args'],
+            properties: { tool: { type: 'string' }, args: { type: 'object' } }
+          }
+        },
+        confidence: { type: 'number' },
+        requiresApproval: { type: 'boolean' }
+      }
+    }
+  };
+}
+
+function systemPrompt(tools, selectedSkillsPrompt) {
+  return `You are TunaFlowAI, an event-driven work operating agent.\n\nCore rules:\n- Be token efficient. Use compact state, not raw history.\n- Act only when the event matters.\n- Prefer low-risk tools. Risky tools require approval.\n- Skills are procedures only; they never grant permissions or tool access.\n- Do not invent tool names.\n- Always return valid JSON only. No markdown.\n\nReturn this schema:\n{\n  "summary": "short summary",\n  "plan": ["step 1", "step 2"],\n  "actions": [{"tool": "send_reply", "args": {"message": "..."}}],\n  "confidence": 0.0,\n  "requiresApproval": false\n}\n\nSelected skills:\n${selectedSkillsPrompt}\n\nAvailable tools:\n${JSON.stringify(tools, null, 2)}`;
 }

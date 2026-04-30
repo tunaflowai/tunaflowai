@@ -1,3 +1,4 @@
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createTunaFlowRuntime } from '../src/index.js';
 
@@ -26,6 +27,7 @@ const config = {
   tools: { commandAllowlist: ['node', 'npm', 'git'] }
 };
 
+await fs.rm(config.runtime.dataDir, { recursive: true, force: true });
 const app = await createTunaFlowRuntime(config);
 
 console.log('\n--- TunaFlowAI demo: model fallback chain ---\n');

@@ -6,6 +6,7 @@ import { AuditLog } from '../src/core/audit-log.js';
 import { ModelRouter } from '../src/core/model-router.js';
 import { PermissionEngine } from '../src/core/permission-engine.js';
 import { createTunaFlowRuntime } from '../src/index.js';
+import { createModelProvider, listProviderIds } from '../src/models/provider-registry.js';
 
 async function testAuditLog() {
   const dataDir = await mkdtemp(path.join(os.tmpdir(), 'tunaflow-audit-'));
@@ -80,11 +81,39 @@ async function testApprovalFlow() {
   assert.equal(await readFile(path.join(workspace, 'hello.txt'), 'utf8'), 'hello from approval');
 }
 
+
+async function testProviderRegistry() {
+  assert.ok(listProviderIds().includes('gemini'));
+  assert.ok(listProviderIds().includes('anthropic'));
+  assert.ok(listProviderIds().includes('deepseek'));
+  const provider = createModelProvider({ name: 'local', provider: 'ollama', model: 'llama3.2', enabled: false });
+  assert.equal(provider.constructor.name, 'OpenAICompatibleProvider');
+}
+
+async function testSkillsAndChannels() {
+  const workspace = await mkdtemp(path.join(os.tmpdir(), 'tunaflow-skills-'));
+  const dataDir = path.join(workspace, '.tunaflow');
+  const app = await createTunaFlowRuntime({
+    runtime: { workspace, dataDir, proactive: true, verifyToolResults: true },
+    models: [{ name: 'mock', provider: 'mock', behavior: 'ok', enabled: true }],
+    chains: { default: ['mock'] },
+    skills: { enabled: true, bundled: true, maxSkills: 3 },
+    channels: { webhook: { enabled: true } }
+  });
+  const skills = app.skillLoader.list();
+  assert.ok(skills.some((skill) => skill.name === 'terminal-debugger'));
+  const selected = app.skillSelector.select({ event: { type: 'terminal.output', text: 'Error: cannot find module x' }, state: {} });
+  assert.ok(selected.some((skill) => skill.name === 'terminal-debugger'));
+  assert.ok(app.channelRegistry.list().some((channel) => channel.id === 'webhook'));
+}
+
 const tests = [
   ['audit hash chain', testAuditLog],
   ['model fallback', testModelFallback],
   ['permission gates', testPermissionEngine],
-  ['approval execution', testApprovalFlow]
+  ['approval execution', testApprovalFlow],
+  ['provider registry', testProviderRegistry],
+  ['skills and channels', testSkillsAndChannels]
 ];
 
 for (const [name, fn] of tests) {

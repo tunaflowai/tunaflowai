@@ -1,63 +1,63 @@
 # TunaFlowAI Roadmap
 
-## v0.1 - Local MVP
+## v0.3 alpha - provider, skills, and channels foundation
 
-- Local gateway
-- Event store
-- State engine
-- Context compressor
-- Model fallback chain
-- Mock and OpenAI-compatible providers
-- Tool registry
-- Permission engine
-- Audit log
+Included in this package:
 
-## v0.2 - Productization foundation
+- provider registry
+- native Gemini provider
+- native Anthropic provider
+- OpenAI-compatible provider presets for OpenAI, Qwen, MiniMax, DeepSeek, Kimi/Moonshot, OpenRouter, Ollama, LM Studio, vLLM, and more
+- model catalog endpoint and CLI
+- skills loader/selector
+- bundled skills
+- channel registry
+- outbound router
+- webhook, Telegram, Discord, Slack, and WhatsApp Cloud adapter foundations
+- expanded tests
 
-- English-first docs and demos
-- Approval CLI and HTTP API
-- Tamper-evident audit log
-- Stronger model health metadata
-- `maxModelCallsPerEvent` enforcement
-- Tool argument validation
-- Safer command execution defaults
-- API token support for local gateway
-- More tests around approvals and audit verification
+## v0.3 closeout
 
-## v0.3 - Real observers
+- mocked HTTP tests for each model provider
+- endpoint tests for gateway routes
+- Slack signing verification
+- WhatsApp webhook signature verification
+- Telegram webhook/polling lifecycle
+- per-channel allowlists
+- cost and rate-limit metadata
+- stricter plan schema validation
 
-- Recursive file watcher
-- Terminal watcher with structured error extraction
-- Browser observer
-- Active app/window observer
-- Web dashboard
-- Approval center UI
+## v0.4 - product UX
 
-## v0.4 - Work execution
+- Approval Center dashboard
+- Run trace viewer
+- Model health dashboard
+- Skill allowlist UI
+- Channel settings UI
+- Task graph and per-task budget manager
 
-- Verification loop v2
-- Task graph
-- Budget manager per task
-- Browser operator
-- Git workflow tools
-- Report generator
-- Replayable run traces
+## v0.5 - work execution
 
-## v0.5 - Plugin ecosystem
+- browser observer
+- browser operator
+- terminal error parser
+- recursive file observer
+- verification loop v2
+- replayable runs
 
-- Tool plugin SDK
-- Channel plugin SDK
-- Observer plugin SDK
-- Signed plugin manifest
-- Capability-based permissions
-- Plugin test harness
+## v0.6 - extension ecosystem
 
-## v1.0 - Production hardening
+- plugin SDK for providers, tools, skills, and channels
+- signed manifests
+- plugin permission declarations
+- extension registry format
 
-- Multi-tenant mode
-- Secrets vault
-- Sandbox runner
-- Immutable remote audit log option
-- Policy-as-code
-- Observability dashboard
-- Hosted deployment profile
+## v1.0 - production hardening
+
+- sandbox runner for command execution
+- secrets vault
+- policy-as-code
+- remote tamper-evident audit option
+- RBAC
+- multi-tenant deployment mode
+- observability and metrics

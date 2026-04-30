@@ -6,7 +6,7 @@ export class ContextCompressor {
     this.maxTextChars = maxTextChars;
   }
 
-  async build({ event, state, budget = {}, toolPolicy = {} }) {
+  async build({ event, state, skills = [], budget = {}, toolPolicy = {} }) {
     const compressed = {
       runtimeGoal: 'Act as an event-driven work operating agent. Use compact state and avoid raw history unless a tool is needed.',
       goal: state.activeTask?.title || state.lastUserInstruction || 'No active task yet',
@@ -26,6 +26,7 @@ export class ContextCompressor {
       })),
       currentEvent: compressEvent(event, this.maxTextChars),
       recentEvents: (state.recentEvents || []).slice(-this.maxRecentEvents),
+      selectedSkills: skills,
       constraints: {
         tokenEfficient: true,
         doNotUseRawHistoryUnlessNeeded: true,

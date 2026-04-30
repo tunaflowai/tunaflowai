@@ -1,107 +1,122 @@
 # TunaFlowAI Architecture
 
-TunaFlowAI is an event-driven work operating agent. The goal is to monitor real work, keep compact state, call models only when necessary, and execute actions through a permissioned tool layer.
-
-## Core loop
+TunaFlowAI is a local-first, event-driven AI work operating agent.
 
 ```text
-Observer event
-  -> Event store
-  -> State engine
-  -> Context compressor
-  -> Model router with fallback chain
-  -> Agent planner JSON
-  -> Permission engine
-  -> Tool executor
-  -> Verification check
-  -> Audit log
+Work event
+  -> Gateway / Channel adapter
+  -> EventStore
+  -> StateEngine
+  -> SkillSelector
+  -> ContextCompressor
+  -> ModelRouter with fallback chain
+  -> AgentRuntime plan validation
+  -> PermissionEngine
+  -> ToolRegistry / OutboundRouter
+  -> Verification
+  -> AuditLog
 ```
 
-## Main runtime components
+## Core runtime
 
-- `event-store`: append-only JSONL event timeline.
-- `state-engine`: compact work state, active task, recent errors, recent runs.
-- `context-compressor`: creates small model input from state and current event.
-- `model-router`: tries a configured model chain and falls back on timeout, network error, HTTP error, invalid config, or invalid JSON.
-- `tool-registry`: tools with risk levels, basic argument validation, workspace path boundaries, and audited execution.
-- `permission-engine`: approval-first policy for medium and high risk actions.
-- `agent-runtime`: orchestrates one event into one run and can execute approved pending actions.
-- `gateway`: local HTTP API for events, chat, state, models, audit, and approvals.
-- `audit-log`: tamper-evident local audit trail using a hash chain.
+### EventStore
 
-## Model fallback design
+Stores raw work events as JSONL. Raw events are preserved for audit and replay, but they are not automatically sent to models.
 
-A chain is a named list of model configs.
+### StateEngine
 
-```json
-{
-  "chains": {
-    "default": ["primary", "fallback-local"],
-    "strong": ["primary-strong", "primary", "fallback-local"],
-    "cheap": ["fallback-local"]
-  }
-}
-```
+Maintains compact work state:
 
-For each event, TunaFlowAI selects a chain, then tries models in order. A model is skipped if disabled or in cooldown. Failures are recorded in audit logs and model health.
+- active task
+- last user instruction
+- current file/page
+- recent errors
+- recent events
+- recent runs
 
-Fallback also handles invalid JSON when `json: true`, which is important because the agent runtime expects a structured plan.
+### ContextCompressor
 
-## Token efficiency principles
+Builds a token-efficient snapshot for the model. It includes the current event, compact state, selected skills, and tool policy constraints.
 
-1. Events are stored raw, but only compact state goes to the model.
-2. Model calls are event-triggered, not polling-based.
-3. Cheap chains can be used for low-priority events.
-4. Context is compressed before planning.
-5. Tool results and state updates are stored outside the model context.
-6. `maxModelCallsPerEvent` prevents runaway fallback chains.
+### SkillSelector
 
-## Approval flow
+Scores skills against the event and state, then selects only a small number of relevant skills. This prevents prompt bloat while allowing workflow-specific behavior.
+
+### ModelRouter
+
+Routes a model request through a fallback chain. It tracks:
+
+- attempts
+- success/failure count
+- cooldown
+- latency
+- token usage
+- capability metadata
+
+JSON parsing failures happen inside the model attempt path, so a bad JSON answer can trigger fallback.
+
+### PermissionEngine
+
+Every tool has a risk level:
+
+- low: can execute automatically
+- medium: approval by default
+- high: approval by default
+- critical: blocked by default
+
+Approvals are stored as JSON files and can be resolved by CLI or HTTP API.
+
+### ToolRegistry
+
+Built-in tools include:
+
+- `send_reply`
+- `inspect_state`
+- `list_files`
+- `read_file`
+- `write_file`
+- `append_file`
+- `edit_file`
+- `run_command`
+
+### ChannelRegistry and OutboundRouter
+
+Channel adapters normalize messages into events and allow `send_reply` to respond through the same channel when possible.
+
+Current adapters:
+
+- webhook/webchat
+- Telegram
+- Discord
+- Slack
+- WhatsApp Cloud
+
+### AuditLog
+
+Audit entries are append-only JSONL entries with hash chaining. Use `node src/cli.js audit verify` to validate the chain.
+
+## API surface
 
 ```text
-Model proposes action
-  -> Permission engine evaluates risk
-  -> Low risk: execute immediately
-  -> Medium/high risk: write pending approval file
-  -> User approves/rejects via CLI or API
-  -> Approved action executes with audit record
-```
-
-CLI:
-
-```bash
-tunaflow approvals pending
-tunaflow approve appr_xxx "looks good"
-tunaflow reject appr_xxx "too risky"
-```
-
-HTTP:
-
-```text
-GET  /approvals?status=pending
+GET  /health
+GET  /state
+GET  /runs
+GET  /events
+GET  /audit
+GET  /audit/verify
+GET  /models
+GET  /models/catalog
+GET  /tools
+GET  /skills
+GET  /channels
+GET  /approvals
 POST /approvals/:id/approve
 POST /approvals/:id/reject
+POST /events
+POST /chat
+POST /channels/:id/webhook
 ```
 
-## Audit chain
+## Trust model
 
-Each audit entry includes:
-
-- sequence number,
-- previous hash,
-- current hash,
-- redacted payload.
-
-Verify it with:
-
-```bash
-tunaflow audit verify
-```
-
-## Current limitations
-
-- The MVP stores data locally in JSON/JSONL files.
-- The gateway is local-first and should not be exposed directly to the public internet.
-- Approval flows are runtime-level primitives, not a finished web UI.
-- The mock provider is intended for deterministic demos and tests.
-- Production use still needs sandboxing, stronger secret handling, authentication roles, plugin signing, observability, and network controls.
+The current runtime is suitable for local trusted development. It is not yet a hostile multi-tenant platform. The next major hardening milestones are sandboxed command execution, policy-as-code, signatures for third-party extensions, and stronger channel auth.

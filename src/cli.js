@@ -27,7 +27,16 @@ try {
     console.log(JSON.stringify(result, null, 2));
   } else if (command === 'status') {
     const app = await createTunaFlowRuntime(await loadConfig());
-    console.log(JSON.stringify({ state: app.stateEngine.getState(), models: app.modelRouter.getHealth() }, null, 2));
+    console.log(JSON.stringify({ state: app.stateEngine.getState(), models: app.modelRouter.getHealth(), skills: app.skillLoader.list(), channels: app.channelRegistry.list() }, null, 2));
+  } else if (command === 'models' && process.argv[3] === 'catalog') {
+    const app = await createTunaFlowRuntime(await loadConfig());
+    console.log(JSON.stringify(app.modelRouter.getCatalog(), null, 2));
+  } else if (command === 'skills') {
+    const app = await createTunaFlowRuntime(await loadConfig());
+    console.log(JSON.stringify(app.skillLoader.list(), null, 2));
+  } else if (command === 'channels') {
+    const app = await createTunaFlowRuntime(await loadConfig());
+    console.log(JSON.stringify(app.channelRegistry.list(), null, 2));
   } else if (command === 'approvals') {
     const status = process.argv[3] || null;
     const app = await createTunaFlowRuntime(await loadConfig());
@@ -47,6 +56,8 @@ try {
     console.log(JSON.stringify({
       ok: true,
       tools: app.toolRegistry.list().length,
+      skills: app.skillLoader.list().length,
+      channels: app.channelRegistry.list().length,
       models: app.modelRouter.getHealth(),
       audit: await app.auditLog.verify()
     }, null, 2));
@@ -84,5 +95,5 @@ function defaultConfig() {
 }
 
 function printHelp() {
-  console.log(`TunaFlowAI commands:\n\n  tunaflow init                         Create config/tunaflow.config.json\n  tunaflow dev                          Start local gateway\n  tunaflow chat <text>                  Emit a user.message event\n  tunaflow emit <type> <text>           Emit one event into the runtime\n  tunaflow status                       Print state and model health\n  tunaflow approvals [pending|approved|rejected]\n  tunaflow approve <approval_id> [note] Execute an approved pending action\n  tunaflow reject <approval_id> [note]  Reject a pending action\n  tunaflow audit verify                 Verify tamper-evident audit chain\n  tunaflow check                        Validate config/runtime\n\nExamples:\n  node src/cli.js dev\n  node src/cli.js chat "Watch my workspace and keep model usage efficient"\n  node src/cli.js emit terminal.output "Error: cannot find variable plans"\n`);
+  console.log(`TunaFlowAI commands:\n\n  tunaflow init                         Create config/tunaflow.config.json\n  tunaflow dev                          Start local gateway\n  tunaflow chat <text>                  Emit a user.message event\n  tunaflow emit <type> <text>           Emit one event into the runtime\n  tunaflow status                       Print state and model health\n  tunaflow models catalog               Print provider presets and configured model capabilities\n  tunaflow skills                       List loaded skills\n  tunaflow channels                     List configured channels\n  tunaflow approvals [pending|approved|rejected]\n  tunaflow approve <approval_id> [note] Execute an approved pending action\n  tunaflow reject <approval_id> [note]  Reject a pending action\n  tunaflow audit verify                 Verify tamper-evident audit chain\n  tunaflow check                        Validate config/runtime\n\nExamples:\n  node src/cli.js dev\n  node src/cli.js chat "Watch my workspace and keep model usage efficient"\n  node src/cli.js emit terminal.output "Error: cannot find variable plans"\n`);
 }

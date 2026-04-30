@@ -1,7 +1,7 @@
 import path from 'node:path';
-import { MockProvider } from '../models/mock-provider.js';
-import { OpenAICompatibleProvider } from '../models/openai-compatible-provider.js';
 import { approximateTokens, extractJsonObject, now, readJson, withTimeout } from './utils.js';
+import { createModelProvider, enrichModelConfig, listProviderIds } from '../models/provider-registry.js';
+import { listProviderPresets, providerConfigExamples } from '../models/model-catalog.js';
 
 export class ModelRouter {
   constructor(config = {}, auditLog = null) {
@@ -11,15 +11,20 @@ export class ModelRouter {
     this.health = new Map();
 
     for (const model of this.config.models) {
-      this.providers.set(model.name, createProvider(model));
+      this.providers.set(model.name, createModelProvider(model));
       this.health.set(model.name, {
+        provider: model.provider,
+        model: model.model || model.name,
+        capability: model.capability,
         failures: 0,
         successes: 0,
         totalAttempts: 0,
         lastError: null,
         lastAttemptAt: null,
         nextRetryAt: 0,
-        lastSuccessAt: null
+        lastSuccessAt: null,
+        latencyMs: { last: null, average: null },
+        usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
       });
     }
   }
@@ -40,8 +45,24 @@ export class ModelRouter {
     return out;
   }
 
-  async complete({ messages, json = false, chain = 'default', taskType = 'general', maxOutputTokens, temperature }) {
-    const selectedChain = this.resolveChain(chain);
+  getCatalog() {
+    return {
+      providers: listProviderIds(),
+      presets: listProviderPresets(),
+      examples: providerConfigExamples(),
+      configuredModels: this.config.models.map((model) => ({
+        name: model.name,
+        provider: model.provider,
+        model: model.model,
+        enabled: model.enabled !== false,
+        capability: model.capability
+      })),
+      chains: this.config.chains
+    };
+  }
+
+  async complete({ messages, json = false, jsonSchema = null, tools = null, toolChoice = undefined, chain = 'default', taskType = 'general', maxOutputTokens, temperature, requiredCapabilities = [], reasoning = undefined, extraBody = {} }) {
+    const selectedChain = this.resolveChain(chain, requiredCapabilities);
     const inputTokens = approximateTokens(messages);
     const maxInputTokens = this.config.tokenBudget.maxInputTokens;
     const maxAttempts = this.config.tokenBudget.maxModelCallsPerEvent;
@@ -66,6 +87,12 @@ export class ModelRouter {
         continue;
       }
 
+      const missing = missingCapabilities(model, requiredCapabilities);
+      if (missing.length > 0) {
+        attempts.push({ model: modelName, skipped: true, reason: 'missing-capabilities', missing });
+        continue;
+      }
+
       const health = this.health.get(modelName);
       if (health.nextRetryAt && Date.now() < health.nextRetryAt) {
         attempts.push({ model: modelName, skipped: true, reason: 'cooldown', nextRetryAt: health.nextRetryAt });
@@ -80,43 +107,52 @@ export class ModelRouter {
       health.lastAttemptAt = now();
 
       try {
-        await this.audit('model.attempt', { model: modelName, chain, taskType, inputTokens, maxOutputTokens: maxOutputTokens || this.config.tokenBudget.maxOutputTokens });
+        await this.audit('model.attempt', {
+          model: modelName,
+          provider: model.provider,
+          chain,
+          taskType,
+          inputTokens,
+          requiredCapabilities,
+          maxOutputTokens: maxOutputTokens || this.config.tokenBudget.maxOutputTokens
+        });
+
         const result = await withTimeout(
           (signal) => provider.complete({
             messages,
             maxOutputTokens: maxOutputTokens || this.config.tokenBudget.maxOutputTokens,
             temperature,
             signal,
-            json
+            json,
+            jsonSchema,
+            tools,
+            toolChoice,
+            reasoning,
+            extraBody
           }),
           timeoutMs,
           `model ${modelName}`
         );
 
         const parsedJson = json ? extractJsonObject(result.content) : undefined;
+        const latencyMs = Date.now() - startedAt;
         const output = {
           model: { name: modelName, provider: model.provider, model: model.model || model.name },
           content: result.content,
           usage: result.usage,
-          attempts: [...attempts, { model: modelName, ok: true, latencyMs: Date.now() - startedAt }],
+          attempts: [...attempts, { model: modelName, ok: true, latencyMs }],
           json: parsedJson,
+          toolCalls: result.toolCalls || [],
           raw: result.raw
         };
 
-        health.failures = 0;
-        health.successes += 1;
-        health.lastError = null;
-        health.nextRetryAt = 0;
-        health.lastSuccessAt = now();
-        await this.audit('model.success', { model: modelName, chain, latencyMs: Date.now() - startedAt, usage: result.usage });
+        updateSuccessHealth(health, result.usage, latencyMs);
+        await this.audit('model.success', { model: modelName, chain, latencyMs, usage: result.usage });
         return output;
       } catch (error) {
-        health.failures += 1;
-        health.lastError = error.message;
-        if (health.failures >= this.config.fallback.maxFailuresBeforeCooldown) {
-          health.nextRetryAt = Date.now() + this.config.fallback.cooldownMs;
-        }
-        const attempt = { model: modelName, ok: false, error: error.message, latencyMs: Date.now() - startedAt };
+        const latencyMs = Date.now() - startedAt;
+        updateFailureHealth(health, error, latencyMs, this.config.fallback);
+        const attempt = { model: modelName, ok: false, error: error.message, latencyMs };
         attempts.push(attempt);
         errors.push(`${modelName}: ${error.message}`);
         await this.audit('model.failure', attempt);
@@ -130,10 +166,17 @@ export class ModelRouter {
     throw error;
   }
 
-  resolveChain(chain) {
+  resolveChain(chain, requiredCapabilities = []) {
     const selected = this.config.chains[chain] || this.config.chains.default || [];
-    if (selected.length > 0) return selected;
-    return this.config.models.map((model) => model.name);
+    const names = selected.length > 0 ? selected : this.config.models.map((model) => model.name);
+    if (!requiredCapabilities.length) return names;
+    return names.filter((name) => {
+      const model = this.config.modelsByName.get(name);
+      return model && missingCapabilities(model, requiredCapabilities).length === 0;
+    }).concat(names.filter((name) => {
+      const model = this.config.modelsByName.get(name);
+      return !model || missingCapabilities(model, requiredCapabilities).length > 0;
+    }));
   }
 
   async audit(type, payload) {
@@ -141,14 +184,37 @@ export class ModelRouter {
   }
 }
 
-function createProvider(model) {
-  if (model.provider === 'mock') return new MockProvider(model);
-  if (model.provider === 'openai-compatible') return new OpenAICompatibleProvider(model);
-  throw new Error(`Unsupported provider: ${model.provider}`);
+function updateSuccessHealth(health, usage = {}, latencyMs) {
+  health.failures = 0;
+  health.successes += 1;
+  health.lastError = null;
+  health.nextRetryAt = 0;
+  health.lastSuccessAt = now();
+  health.latencyMs.last = latencyMs;
+  health.latencyMs.average = health.latencyMs.average == null ? latencyMs : Math.round((health.latencyMs.average * 0.75) + (latencyMs * 0.25));
+  health.usage.inputTokens += usage?.inputTokens || 0;
+  health.usage.outputTokens += usage?.outputTokens || 0;
+  health.usage.totalTokens += usage?.totalTokens || ((usage?.inputTokens || 0) + (usage?.outputTokens || 0));
+}
+
+function updateFailureHealth(health, error, latencyMs, fallback) {
+  health.failures += 1;
+  health.lastError = error.message;
+  health.latencyMs.last = latencyMs;
+  health.latencyMs.average = health.latencyMs.average == null ? latencyMs : Math.round((health.latencyMs.average * 0.75) + (latencyMs * 0.25));
+  if (health.failures >= fallback.maxFailuresBeforeCooldown) {
+    health.nextRetryAt = Date.now() + fallback.cooldownMs;
+  }
+}
+
+function missingCapabilities(model, requiredCapabilities) {
+  const supports = model.capability?.supports || {};
+  return requiredCapabilities.filter((capability) => supports[capability] !== true);
 }
 
 function withDefaults(config) {
-  const models = config.models || [{ name: 'local-mock-fallback', provider: 'mock', behavior: 'ok', enabled: true }];
+  const rawModels = config.models || [{ name: 'local-mock-fallback', provider: 'mock', behavior: 'ok', enabled: true }];
+  const models = rawModels.map((model) => enrichModelConfig(model));
   const normalized = {
     ...config,
     tokenBudget: {

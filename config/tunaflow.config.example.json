@@ -18,6 +18,38 @@
     "maxRecentEvents": 8,
     "maxTextChars": 1800
   },
+  "skills": {
+    "enabled": true,
+    "bundled": true,
+    "allowWorkspaceSkills": false,
+    "allowUserSkills": false,
+    "maxSkills": 3,
+    "maxSkillChars": 3500,
+    "paths": []
+  },
+  "channels": {
+    "webhook": {
+      "enabled": true
+    },
+    "telegram": {
+      "enabled": false,
+      "tokenEnv": "TELEGRAM_BOT_TOKEN"
+    },
+    "discord": {
+      "enabled": false,
+      "tokenEnv": "DISCORD_BOT_TOKEN"
+    },
+    "slack": {
+      "enabled": false,
+      "botTokenEnv": "SLACK_BOT_TOKEN"
+    },
+    "whatsappCloud": {
+      "enabled": false,
+      "accessTokenEnv": "WHATSAPP_ACCESS_TOKEN",
+      "phoneNumberIdEnv": "WHATSAPP_PHONE_NUMBER_ID",
+      "verifyTokenEnv": "WHATSAPP_VERIFY_TOKEN"
+    }
+  },
   "tokenBudget": {
     "maxInputTokens": 8000,
     "maxOutputTokens": 1200,
@@ -30,11 +62,65 @@
   },
   "models": [
     {
-      "name": "primary-openai-compatible",
-      "provider": "openai-compatible",
-      "baseUrl": "https://api.openai.com/v1",
+      "name": "openai-main",
+      "provider": "openai",
       "apiKeyEnv": "OPENAI_API_KEY",
-      "model": "YOUR_MODEL_NAME",
+      "model": "YOUR_OPENAI_MODEL",
+      "enabled": false,
+      "jsonMode": true,
+      "jsonSchemaMode": true
+    },
+    {
+      "name": "gemini-flash",
+      "provider": "gemini",
+      "apiKeyEnv": "GEMINI_API_KEY",
+      "model": "YOUR_GEMINI_MODEL",
+      "enabled": false
+    },
+    {
+      "name": "anthropic-sonnet",
+      "provider": "anthropic",
+      "apiKeyEnv": "ANTHROPIC_API_KEY",
+      "model": "YOUR_CLAUDE_MODEL",
+      "enabled": false
+    },
+    {
+      "name": "qwen-plus",
+      "provider": "qwen",
+      "apiKeyEnv": "DASHSCOPE_API_KEY",
+      "model": "YOUR_QWEN_MODEL",
+      "enabled": false,
+      "jsonMode": true
+    },
+    {
+      "name": "minimax",
+      "provider": "minimax",
+      "apiKeyEnv": "MINIMAX_API_KEY",
+      "model": "YOUR_MINIMAX_MODEL",
+      "enabled": false,
+      "jsonMode": true
+    },
+    {
+      "name": "deepseek",
+      "provider": "deepseek",
+      "apiKeyEnv": "DEEPSEEK_API_KEY",
+      "model": "YOUR_DEEPSEEK_MODEL",
+      "enabled": false,
+      "jsonMode": true
+    },
+    {
+      "name": "kimi",
+      "provider": "kimi",
+      "apiKeyEnv": "MOONSHOT_API_KEY",
+      "model": "YOUR_KIMI_MODEL",
+      "enabled": false,
+      "jsonMode": true
+    },
+    {
+      "name": "ollama-local",
+      "provider": "ollama",
+      "baseUrl": "http://127.0.0.1:11434/v1",
+      "model": "llama3.2",
       "enabled": false,
       "jsonMode": true
     },
@@ -46,9 +132,10 @@
     }
   ],
   "chains": {
-    "default": ["primary-openai-compatible", "local-mock-fallback"],
-    "cheap": ["local-mock-fallback"],
-    "strong": ["primary-openai-compatible", "local-mock-fallback"]
+    "default": ["openai-main", "gemini-flash", "deepseek", "local-mock-fallback"],
+    "cheap": ["gemini-flash", "qwen-plus", "ollama-local", "local-mock-fallback"],
+    "strong": ["anthropic-sonnet", "openai-main", "deepseek", "kimi", "local-mock-fallback"],
+    "local": ["ollama-local", "local-mock-fallback"]
   },
   "permissions": {
     "autoApproveMedium": false,
@@ -57,6 +144,7 @@
   },
   "tools": {
     "commandAllowlist": ["node", "npm", "pnpm", "yarn", "git", "python", "python3"],
+    "commandDenyPatterns": ["git push", "git reset --hard", "npm publish", "pnpm publish", "yarn publish", "rm -rf", "curl | sh", "wget | sh"],
     "defaultCommandTimeoutMs": 30000,
     "maxCommandOutputChars": 6000
   }

@@ -12,6 +12,7 @@ export class ToolRegistry {
     this.auditLog = auditLog;
     this.config = {
       commandAllowlist: config.commandAllowlist || ['node', 'npm', 'pnpm', 'yarn', 'git', 'python', 'python3'],
+      commandDenyPatterns: config.commandDenyPatterns || ['git push', 'git reset --hard', 'npm publish', 'pnpm publish', 'yarn publish', 'rm -rf', 'curl | sh', 'wget | sh'],
       maxCommandOutputChars: config.maxCommandOutputChars || 6000,
       defaultCommandTimeoutMs: config.defaultCommandTimeoutMs || 30000
     };
@@ -55,7 +56,18 @@ export class ToolRegistry {
       description: 'Send a reply to the current user/channel. MVP implementation writes to stdout and an outbound log.',
       risk: 'low',
       schema: { required: ['message'], properties: { message: 'string' } },
-      execute: async ({ message }, ctx) => {
+      execute: async ({ message, channel, conversationId, recipientId }, ctx) => {
+        if (ctx.outboundRouter) {
+          const result = await ctx.outboundRouter.send({
+            channel,
+            conversationId,
+            recipientId,
+            text: message || '',
+            event: ctx.event,
+            metadata: { runId: ctx.runId, approvalId: ctx.approvalId }
+          });
+          return { ok: true, message, delivery: result };
+        }
         const outboundDir = path.join(ctx.dataDir || path.join(ctx.workspace, '.tunaflow'), 'outbound');
         await ensureDir(outboundDir);
         const line = `[TunaFlow reply] ${message || ''}`;
@@ -148,6 +160,10 @@ export class ToolRegistry {
       execute: async ({ command, args = [], timeoutMs }, ctx) => {
         if (!this.config.commandAllowlist.includes(command)) throw new Error(`Command not allowlisted: ${command}`);
         if (!Array.isArray(args) || args.some((arg) => typeof arg !== 'string')) throw new Error('run_command args must be an array of strings');
+        const commandLine = [command, ...args].join(' ');
+        for (const pattern of this.config.commandDenyPatterns) {
+          if (commandLine.toLowerCase().includes(String(pattern).toLowerCase())) throw new Error(`Command denied by policy: ${pattern}`);
+        }
         const effectiveTimeoutMs = limitNumber(timeoutMs, this.config.defaultCommandTimeoutMs, { min: 1000, max: 120000 });
         const { stdout, stderr } = await execFileAsync(command, args, {
           cwd: ctx.workspace,

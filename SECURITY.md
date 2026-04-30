@@ -1,30 +1,38 @@
 # Security Policy
 
-TunaFlowAI is an automation agent. Treat all tools as capabilities that can affect real systems.
+TunaFlowAI is currently a local-first alpha runtime. It is designed for trusted local development and demos, not hostile multi-tenant automation.
 
-## Current safety model
+## Current protections
 
-- Low-risk tools run automatically.
-- Medium-risk tools require approval by default.
-- High-risk tools require approval by default.
-- Critical-risk tools are blocked by default.
-- Shell commands are allowlisted and approval-gated.
-- Command execution uses `execFile`, not a shell string.
-- File paths are constrained to the configured workspace.
-- API access can be protected with `TUNAFLOW_API_TOKEN`.
-- Audit logs redact obvious secret patterns.
-- Audit entries are chained with hashes and can be verified with `tunaflow audit verify`.
+- Local gateway binds to `127.0.0.1` by default.
+- Unsafe endpoints can be protected with `TUNAFLOW_API_TOKEN`.
+- Request body size is limited.
+- File tools are restricted to the configured workspace.
+- Medium/high-risk tools require approval by default.
+- Critical tools are blocked by default.
+- `run_command` uses allowlisted command names, a sanitized environment, timeouts, and basic deny patterns.
+- Audit logs are tamper-evident through hash chaining.
+- Skills are instruction-only and cannot grant permissions.
+- Workspace/user skills are disabled by default.
 
-## Important limitations
+## Current limitations
 
-Do not use the current MVP as a hostile multi-tenant sandbox. Run it only in a trusted local workspace until the sandbox layer is implemented.
+- `run_command` is not yet a real sandbox.
+- No Docker/gVisor/Firecracker isolation is included yet.
+- No secrets vault is included yet.
+- Channel adapters are minimal foundations and do not implement every provider security best practice.
+- Slack signature verification and WhatsApp signature verification still need production implementation.
+- No role-based auth or multi-tenant isolation yet.
+- Third-party skills/plugins are not signed yet.
 
-Still needed before production-grade autonomous usage:
+## Safe usage guidance
 
-- sandbox runner for commands and browser automation,
-- stronger secret storage,
-- policy-as-code,
-- signed plugins,
-- network egress controls,
-- immutable remote audit storage,
-- authentication and user/session roles for hosted deployments.
+- Run TunaFlowAI only in a trusted local workspace.
+- Do not enable auto-approval for high-risk tools unless you fully understand the risk.
+- Do not expose the gateway publicly without a reverse proxy, auth, and TLS.
+- Do not store API keys inside skills or prompts.
+- Review pending approvals before executing edits or commands.
+
+## Report a vulnerability
+
+Please open a private security advisory on GitHub or contact the maintainers through the repository security channel.
