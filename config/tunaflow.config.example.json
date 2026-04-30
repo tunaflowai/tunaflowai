@@ -12,20 +12,20 @@
     "agentName": "Tuna",
     "displayName": "Tuna",
     "pronouns": "they/them",
-    "bio": "A local-first AI work operating agent with model fallback, persona switching, skills, approvals, and audit logs.",
+    "bio": "Agen operasi kerja AI lokal-first dengan fallback model, pergantian persona, skill, approval, dan audit log.",
     "personality": {
-      "tone": "calm, practical, safety-aware, token-efficient, and action-oriented",
+      "tone": "tenang, praktis, sadar keamanan, hemat token, dan berorientasi aksi",
       "traits": [
-        "careful",
-        "proactive",
-        "evidence-driven",
-        "concise"
+        "hati-hati",
+        "proaktif",
+        "berbasis bukti",
+        "ringkas"
       ],
-      "language": "English by default; adapt to user language when asked",
+      "language": "Bahasa Indonesia secara bawaan; sesuaikan dengan bahasa pengguna saat diminta",
       "boundaries": [
-        "Never bypass approval policy",
-        "Never expose secrets",
-        "Never claim completed work without evidence"
+        "Jangan pernah melewati policy approval",
+        "Jangan pernah mengekspos secret",
+        "Jangan mengaku selesai tanpa bukti"
       ]
     }
   },
@@ -83,7 +83,14 @@
       "127.0.0.1",
       "0.0.0.0"
     ],
-    "allowedHosts": []
+    "allowedHosts": [],
+    "driver": "fetch",
+    "playwright": {
+      "enabled": false,
+      "browser": "chromium",
+      "headless": true,
+      "storageState": null
+    }
   },
   "secrets": {
     "keyEnv": "TUNAFLOW_SECRETS_KEY",
@@ -133,6 +140,24 @@
       "verifyTokenEnv": "WHATSAPP_VERIFY_TOKEN",
       "appSecretEnv": "WHATSAPP_APP_SECRET",
       "verifySignatures": true
+    },
+    "discordGateway": {
+      "enabled": false,
+      "adapter": "discord",
+      "tokenEnv": "DISCORD_BOT_TOKEN",
+      "gateway": {
+        "enabled": true,
+        "intents": 513
+      }
+    },
+    "slackSocketMode": {
+      "enabled": false,
+      "adapter": "slack",
+      "appTokenEnv": "SLACK_APP_TOKEN",
+      "botTokenEnv": "SLACK_BOT_TOKEN",
+      "socketMode": {
+        "enabled": true
+      }
     }
   },
   "tokenBudget": {
@@ -313,6 +338,48 @@
       "maxOutputTokens": 6000,
       "maxToolCalls": 20,
       "maxRuntimeMs": 300000
+    }
+  },
+  "documentParser": {
+    "xlsx": {
+      "enabled": false,
+      "package": "xlsx"
+    },
+    "pdf": {
+      "enabled": false,
+      "package": "pdf-parse"
+    }
+  },
+  "audit": {
+    "remote": {
+      "enabled": false,
+      "endpointEnv": "TUNAFLOW_AUDIT_ENDPOINT",
+      "tokenEnv": "TUNAFLOW_AUDIT_TOKEN",
+      "failClosed": false
+    }
+  },
+  "plugins": {
+    "marketplace": {
+      "enabled": false,
+      "indexPath": "plugins/marketplace.json",
+      "sources": []
+    },
+    "signedDistribution": {
+      "enabled": true,
+      "signingKeyEnv": "TUNAFLOW_PLUGIN_SIGNING_KEY",
+      "requireSignature": true
+    }
+  },
+  "dashboard": {
+    "roles": {
+      "enabled": false,
+      "defaultRole": "owner",
+      "available": [
+        "owner",
+        "admin",
+        "operator",
+        "viewer"
+      ]
     }
   }
 }

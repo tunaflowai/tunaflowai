@@ -1,28 +1,11 @@
-# Sandbox Runner
+# Sandbox
 
-The `run_command` tool is high risk and approval-gated. In v0.5, TunaFlowAI adds a sandbox runner foundation.
+Sandbox membatasi command dan side effect. Gunakan allowlist, timeout, output limit, dan approval untuk command berisiko.
 
-Modes:
+## Praktik aman
 
-```text
-local   -> execute approved commands on local machine with guardrails
-dry-run -> return the planned command without running it
-docker  -> execute in a Docker container with mounted workspace
-```
-
-Recommended config:
-
-```json
-{
-  "sandbox": {
-    "mode": "docker",
-    "image": "node:22-alpine",
-    "network": "none",
-    "timeoutMs": 30000,
-    "allowedCommands": ["node", "npm", "pnpm", "git", "python3"],
-    "denyPatterns": ["rm -rf", "git push", "npm publish", "curl | sh"]
-  }
-}
-```
-
-The sandbox runner is a safety foundation, not a full hostile multi-tenant isolation boundary yet.
+- Simpan credential di environment variable atau secret manager.
+- Jalankan test sebelum deploy.
+- Aktifkan approval untuk aksi medium, high, dan critical.
+- Catat perubahan penting di audit log.
+- Jangan menerbitkan file lokal atau data pengguna tanpa izin eksplisit.

@@ -1,14 +1,16 @@
 import path from 'node:path';
 import { appendJsonl, createId, ensureDir, now, readAllJsonl, readJsonl, redactSecrets, sha256 } from './utils.js';
+import { RemoteAuditBackend } from './remote-audit-backend.js';
 
 const GENESIS_HASH = '0'.repeat(64);
 
 export class AuditLog {
-  constructor({ dataDir }) {
+  constructor({ dataDir, remote = null } = {}) {
     this.dataDir = dataDir;
     this.file = path.join(dataDir, 'audit.jsonl');
     this.sequence = 0;
     this.lastHash = GENESIS_HASH;
+    this.remote = remote instanceof RemoteAuditBackend ? remote : new RemoteAuditBackend(remote || {});
   }
 
   async init() {
@@ -36,6 +38,7 @@ export class AuditLog {
       hash: sha256(entryBase)
     };
     await appendJsonl(this.file, entry);
+    await this.remote.send(entry);
     this.sequence = entry.sequence;
     this.lastHash = entry.hash;
     return entry;

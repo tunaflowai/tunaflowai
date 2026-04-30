@@ -9,10 +9,10 @@ const command = process.argv[2] || 'help';
 try {
   if (command === 'dev' || command === 'start' || command === 'dashboard') {
     const { config } = await startGateway();
-    console.log(`TunaFlowAI gateway running on http://${config.server.host}:${config.server.port}`);
-    console.log(`Dashboard: http://${config.server.host}:${config.server.port}/dashboard`);
+    console.log(`Gateway TunaFlowAI berjalan di http://${config.server.host}:${config.server.port}`);
+    console.log(`Dasbor: http://${config.server.host}:${config.server.port}/dashboard`);
     console.log(`Workspace: ${config.runtime.workspace}`);
-    console.log(`Data dir: ${config.runtime.dataDir}`);
+    console.log(`Direktori data: ${config.runtime.dataDir}`);
   } else if (command === 'init') {
     await initProject();
   } else if (command === 'emit') {
@@ -87,7 +87,7 @@ async function handleIdentity() {
     const patch = parseKeyValues(process.argv.slice(4));
     return console.log(JSON.stringify(await app.identityManager.update(patch, { source: 'cli' }), null, 2));
   }
-  throw new Error('identity commands: show | set key=value ... | reset');
+  throw new Error('command identity: show | set key=value ... | reset');
 }
 
 async function handlePersona() {
@@ -97,7 +97,7 @@ async function handlePersona() {
   if (sub === 'set' || sub === 'switch') return console.log(JSON.stringify(await app.personaManager.activate(process.argv[4], { source: 'cli' }), null, 2));
   if (sub === 'acquire') return console.log(JSON.stringify(await app.personaManager.acquireSkill(process.argv[4], { personaName: process.argv[5], skillLoader: app.skillLoader, metadata: { source: 'cli' } }), null, 2));
   if (sub === 'release') return console.log(JSON.stringify(await app.personaManager.releaseSkill(process.argv[4], { personaName: process.argv[5], metadata: { source: 'cli' } }), null, 2));
-  throw new Error('persona commands: active | set <name> | acquire <skill> [persona] | release <skill> [persona]');
+  throw new Error('command persona: active | set <name> | acquire <skill> [persona] | release <skill> [persona]');
 }
 
 async function handleSkills() {
@@ -111,7 +111,7 @@ async function handleSkills() {
   if (sub === 'trust') return console.log(JSON.stringify(app.skillTrustRegistry.list(), null, 2));
   if (sub === 'sign') return console.log(JSON.stringify(await app.skillTrustRegistry.signSkill(process.argv[4], { source: 'cli' }), null, 2));
   if (sub === 'verify') return console.log(JSON.stringify(process.argv[4] ? await app.skillTrustRegistry.verifySkill(process.argv[4]) : await app.skillTrustRegistry.verifyLoadedSkills(app.skillLoader.list()), null, 2));
-  throw new Error('skills commands: list | jobs | create <name> | acquire <path/name> | acquired | trust | sign <path/name> | verify [path/name]');
+  throw new Error('command skills: list | jobs | create <name> | acquire <path/name> | acquired | trust | sign <path/name> | verify [path/name]');
 }
 
 async function handleSecrets() {

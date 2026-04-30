@@ -36,7 +36,7 @@ export function createGateway({ runtime, eventStore, stateEngine, auditLog, mode
       }
 
       if (apiToken || authManager?.enabled?.()) {
-        if (!isPublicEndpoint(req.method, url.pathname) && !isAuthorized(req, apiToken, authManager)) return sendJson(res, 401, { error: 'Unauthorized' });
+        if (!isPublicEndpoint(req.method, url.pathname) && !isAuthorized(req, apiToken, authManager)) return sendJson(res, 401, { error: 'Tidak terotorisasi' });
       }
 
       if (req.method === 'GET' && url.pathname === '/health') return sendJson(res, 200, { ok: true, name: 'TunaFlowAI', models: modelRouter.getHealth() });
@@ -117,7 +117,7 @@ export function createGateway({ runtime, eventStore, stateEngine, auditLog, mode
         return sendJson(res, 200, result);
       }
 
-      return sendJson(res, 404, { error: 'Not found' });
+      return sendJson(res, 404, { error: 'Tidak ditemukan' });
     } catch (error) {
       const status = /JSON|body|Event requires|Event body|exceeds limit|Unauthorized|Invalid/.test(error.message) ? 400 : 500;
       return sendJson(res, status, { error: error.message, stack: process.env.NODE_ENV === 'production' ? undefined : error.stack });
@@ -143,4 +143,4 @@ async function overview({ modelRouter, stateEngine, eventStore, auditLog, toolRe
   return { health: { ok: true, models: modelRouter.getHealth() }, identity: identityManager?.get?.() || null, state: stateEngine.getState(), activeTask: taskManager?.active?.() || null, tasks: taskManager?.list?.({ limit }) || [], runs: stateEngine.getRuns(limit), events: await eventStore.recent(limit), audit: await auditLog.recent(limit), auditVerification: await auditLog.verify(), models: modelRouter.getHealth(), modelCatalog: modelRouter.getCatalog(), tools: toolRegistry.list(), skills: skillLoader?.list?.() || [], acquiredSkills: await skillLoader?.listAcquired?.() || [], personas: personaManager?.list?.() || [], activePersona: personaManager?.getActive?.() || null, channels: channelRegistry?.list?.() || [], approvals: await permissionEngine.listApprovals({ status: 'pending', limit }) };
 }
 function skillJobs(skillLoader) { const skills = skillLoader?.list?.() || []; return skills.map((skill) => ({ skill: skill.name, job: skill.job || (skill.jobs || [])[0] || null, jobs: skill.jobs || [], risk: skill.risk, personas: skill.personas || [], tools: skill.tools || [], trust: skill.trust, description: skill.description, signature: skill.signature || null })); }
-function renderLoginHtml(status) { if (!status.enabled) return '<!doctype html><html><body><p>Dashboard auth is disabled.</p><a href="/dashboard">Open dashboard</a></body></html>'; return `<!doctype html><html><head><meta charset="utf-8"><title>TunaFlowAI Login</title><style>body{font-family:system-ui;margin:40px;max-width:520px}input,button{font:inherit;padding:10px;margin:6px 0;width:100%}.card{border:1px solid #ddd;border-radius:12px;padding:24px}</style></head><body><div class="card"><h1>TunaFlowAI</h1><p>Dashboard authentication is enabled.</p><input id="password" type="password" placeholder="Dashboard password" autofocus><button onclick="login()">Login</button><pre id="out"></pre></div><script>async function login(){const r=await fetch('/auth/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({password:document.getElementById('password').value})}); if(r.ok) location.href='/dashboard'; else document.getElementById('out').textContent=await r.text();}</script></body></html>`; }
+function renderLoginHtml(status) { if (!status.enabled) return '<!doctype html><html><body><p>Auth dasbor nonaktif.</p><a href="/dashboard">Buka dasbor</a></body></html>'; return `<!doctype html><html><head><meta charset="utf-8"><title>Login TunaFlowAI</title><style>body{font-family:system-ui;margin:40px;max-width:520px}input,button{font:inherit;padding:10px;margin:6px 0;width:100%}.card{border:1px solid #ddd;border-radius:12px;padding:24px}</style></head><body><div class="card"><h1>TunaFlowAI</h1><p>Autentikasi dasbor aktif.</p><input id="password" type="password" placeholder="Password dasbor" autofocus><button onclick="login()">Masuk</button><pre id="out"></pre></div><script>async function login(){const r=await fetch('/auth/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({password:document.getElementById('password').value})}); if(r.ok) location.href='/dashboard'; else document.getElementById('out').textContent=await r.text();}</script></body></html>`; }

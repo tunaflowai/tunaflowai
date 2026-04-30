@@ -42,6 +42,7 @@ export async function loadConfig(configPath = process.env.TUNAFLOW_CONFIG || 'co
   config.sandbox = config.sandbox || {};
   config.browser = config.browser || {};
   config.channels = config.channels || {};
+  config.audit = config.audit || {};
   return config;
 }
 
@@ -60,11 +61,12 @@ export async function createTunaFlowRuntime(config = null) {
   effectiveConfig.sandbox ||= {};
   effectiveConfig.browser ||= {};
   effectiveConfig.channels ||= {};
+  effectiveConfig.audit ||= {};
 
   const dataDir = effectiveConfig.runtime.dataDir;
   const workspace = effectiveConfig.runtime.workspace;
 
-  const auditLog = new AuditLog({ dataDir });
+  const auditLog = new AuditLog({ dataDir, remote: effectiveConfig.audit.remote || effectiveConfig.remoteAudit || {} });
   await auditLog.init();
 
   const eventStore = new EventStore({ dataDir });
