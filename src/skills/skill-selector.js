@@ -1,16 +1,14 @@
 export class SkillSelector {
   constructor({ skillLoader, config = {}, auditLog = null } = {}) {
     this.skillLoader = skillLoader;
-    this.config = {
-      maxSkills: config.maxSkills || 3,
-      maxSkillChars: config.maxSkillChars || 3500
-    };
+    this.config = { maxSkills: config.maxSkills || 3, maxSkillChars: config.maxSkillChars || 3500 };
     this.auditLog = auditLog;
   }
 
   select({ event = {}, state = {}, persona = null } = {}) {
     const skills = this.skillLoader?.skills || [];
-    const scored = skills.map((skill) => ({ skill, score: scoreSkill(skill, event, state, persona) }))
+    const scored = skills
+      .map((skill) => ({ skill, score: scoreSkill(skill, event, state, persona) }))
       .filter((item) => item.score > 0)
       .sort((a, b) => b.score - a.score || trustBoost(b.skill) - trustBoost(a.skill) || a.skill.name.localeCompare(b.skill.name))
       .slice(0, this.config.maxSkills)
@@ -26,10 +24,30 @@ export class SkillSelector {
 
 function scoreSkill(skill, event, state, persona) {
   let score = 0;
-  const haystack = [event.type, event.text, event.path, event.url, event.title, state.activeTask?.title, state.lastUserInstruction, persona?.role, persona?.title, persona?.description]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
+  const haystack = [
+    event.type,
+    event.text,
+    event.path,
+    event.url,
+    event.title,
+    event.subject,
+    event.channel,
+    event.payload && JSON.stringify(event.payload),
+    state.activeTask?.title,
+    state.lastUserInstruction,
+    persona?.role,
+    persona?.title,
+    persona?.description
+  ].filter(Boolean).join(' ').toLowerCase();
+
+  const skillProfile = [
+    skill.name,
+    skill.description,
+    (skill.jobs || []).join(' '),
+    (skill.tags || []).join(' '),
+    (skill.tools || []).join(' '),
+    (skill.personas || []).join(' ')
+  ].filter(Boolean).join(' ').toLowerCase();
 
   if ((persona?.defaultSkills || []).includes(skill.name) || (persona?.effectiveSkills || []).includes(skill.name)) score += 25;
   if ((persona?.acquiredSkills || []).includes(skill.name)) score += 30;
@@ -37,21 +55,46 @@ function scoreSkill(skill, event, state, persona) {
   for (const trigger of skill.triggers || []) {
     const normalized = String(trigger).toLowerCase();
     if (!normalized) continue;
-    if (event.type === trigger) score += 10;
-    if (haystack.includes(normalized)) score += 5;
+    const genericUser = normalized === 'user.message' || normalized === 'channel.message';
+    if (event.type === trigger) score += genericUser ? 1 : 10;
+    if (!genericUser && haystack.includes(normalized)) score += 5;
     if (normalized.includes('*') && globish(normalized, event.type || '')) score += 8;
   }
 
-  if (/error|failed|exception|traceback|cannot|not found/i.test(event.text || '') && /debug|terminal|error/i.test(`${skill.name} ${skill.description}`)) score += 8;
-  if (/review|pull request|diff|pr/i.test(haystack) && /review/i.test(`${skill.name} ${skill.description}`)) score += 8;
-  if (/daily|report|summary|standup/i.test(haystack) && /report/i.test(`${skill.name} ${skill.description}`)) score += 8;
-  if (/customer|support|reply|email|client/i.test(haystack) && /support|draft/i.test(`${skill.name} ${skill.description}`)) score += 8;
-  if (/browser|url|web|page|research/i.test(haystack) && /browser|research/i.test(`${skill.name} ${skill.description}`)) score += 8;
-  if (/engineer|coding|developer|debug/i.test(`${persona?.role || ''} ${persona?.title || ''}`) && /debug|review|code/i.test(`${skill.name} ${skill.description}`)) score += 4;
-  if (/support|customer/i.test(`${persona?.role || ''} ${persona?.title || ''}`) && /support|draft|customer/i.test(`${skill.name} ${skill.description}`)) score += 4;
-  if (/research|analyst/i.test(`${persona?.role || ''} ${persona?.title || ''}`) && /research|browser|report/i.test(`${skill.name} ${skill.description}`)) score += 4;
+  score += keywordScore(haystack, skillProfile, ['debug', 'terminal', 'error', 'exception', 'traceback', 'failed'], ['debug', 'terminal', 'code-reviewer'], 8);
+  score += keywordScore(haystack, skillProfile, ['review', 'pull request', 'diff', 'pr'], ['review', 'code-reviewer'], 8);
+  score += keywordScore(haystack, skillProfile, ['daily', 'report', 'summary', 'standup'], ['report', 'daily-reporter'], 8);
+  score += keywordScore(haystack, skillProfile, ['customer', 'support', 'reply', 'email', 'client'], ['support', 'draft', 'customer'], 8);
+  score += keywordScore(haystack, skillProfile, ['browser', 'url', 'web', 'page', 'research'], ['browser', 'research'], 8);
+  score += keywordScore(haystack, skillProfile, ['seo', 'ads', 'ad ', 'ctr', 'campaign', 'keyword', 'marketing', 'google trends'], ['digital', 'marketer', 'seo', 'ad', 'keyword'], 12);
+  score += keywordScore(haystack, skillProfile, ['cv', 'resume', 'candidate', 'pelamar', 'lamaran', 'interview', 'recruit', 'hrd', 'talent'], ['talent', 'resume', 'candidate', 'interview', 'hr'], 12);
+  score += keywordScore(haystack, skillProfile, ['csv', 'excel', 'spreadsheet', 'anomaly', 'chart', 'graph', 'grafik', 'data analyst', 'laporan data'], ['data', 'analyst', 'csv', 'anomaly', 'chart'], 12);
+  score += keywordScore(haystack, skillProfile, ['calendar', 'meeting', 'schedule', 'jadwal', 'conflict', 'ticket', 'travel'], ['secretary', 'assistant', 'calendar', 'meeting', 'ticket'], 12);
+  score += keywordScore(haystack, skillProfile, ['project', 'sprint', 'scrum', 'jira', 'trello', 'deadline', 'overdue', 'standup'], ['project', 'scrum', 'sprint', 'overdue'], 12);
+  score += keywordScore(haystack, skillProfile, ['translate', 'translator', 'terjemah', 'proofread', 'typo', 'markdown', 'copywriter', 'blog'], ['translator', 'copywriter', 'proofread', 'markdown'], 12);
+
+  // Nudge by matching distinctive words from skill names/jobs without letting generic words dominate.
+  for (const token of distinctiveTokens(skillProfile)) {
+    if (haystack.includes(token)) score += 2;
+  }
+
+  if (/engineer|coding|developer|debug/i.test(`${persona?.role || ''} ${persona?.title || ''}`) && /debug|review|code/i.test(skillProfile)) score += 4;
+  if (/support|customer/i.test(`${persona?.role || ''} ${persona?.title || ''}`) && /support|draft|customer/i.test(skillProfile)) score += 4;
+  if (/research|analyst/i.test(`${persona?.role || ''} ${persona?.title || ''}`) && /research|browser|report|data|analyst/i.test(skillProfile)) score += 4;
+  if (/manager|scrum|project/i.test(`${persona?.role || ''} ${persona?.title || ''}`) && /project|scrum|sprint/i.test(skillProfile)) score += 4;
 
   return score;
+}
+
+function keywordScore(haystack, profile, hayNeedles, profileNeedles, points) {
+  const hayHit = hayNeedles.some((needle) => haystack.includes(needle));
+  const profileHit = profileNeedles.some((needle) => profile.includes(needle));
+  return hayHit && profileHit ? points : 0;
+}
+
+function distinctiveTokens(text) {
+  const stop = new Set(['skill', 'tools', 'send', 'reply', 'user', 'message', 'manager', 'admin', 'data', 'work']);
+  return [...new Set(String(text).split(/[^a-z0-9]+/).filter((token) => token.length >= 5 && !stop.has(token)))].slice(0, 18);
 }
 
 function globish(pattern, value) {

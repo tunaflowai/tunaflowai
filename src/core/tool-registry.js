@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { ensureDir, limitNumber, safeJoin, trimToChars } from './utils.js';
 
+import { registerJobWorkflowTools } from '../tools/job-workflow-tools.js';
 export class ToolRegistry {
   constructor({ workspace, auditLog = null, config = {}, sandboxRunner = null, browserOperator = null, secretVault = null }) {
     this.workspace = path.resolve(workspace || process.cwd());
@@ -59,6 +60,7 @@ export class ToolRegistry {
     this.registerDevOpsTools();
     this.registerBrowserTools();
     this.registerSystemTools();
+    registerJobWorkflowTools(this);
   }
 
   registerMessagingTools() {

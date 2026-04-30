@@ -12,6 +12,15 @@ export const PROVIDER_PRESETS = {
     jsonMode: true,
     supports: { jsonMode: true, tools: false, streaming: false, vision: false, reasoning: false }
   },
+  'codex-cli': {
+    provider: 'codex-cli',
+    auth: 'chatgpt-oauth',
+    commandEnv: 'CODEX_BIN',
+    timeoutMs: 120000,
+    args: ['exec', '--ephemeral', '--sandbox', 'read-only'],
+    passOpenAiApiKey: false,
+    supports: { jsonMode: false, tools: false, streaming: false, vision: false, reasoning: true }
+  },
   anthropic: {
     provider: 'anthropic',
     baseUrl: 'https://api.anthropic.com/v1',
@@ -131,8 +140,9 @@ export const PROVIDER_PRESETS = {
 };
 
 const MODEL_HINTS = [
+  { match: /codex/i, supports: PROVIDER_PRESETS['codex-cli'].supports },
   { match: /gpt|o\d|openai/i, supports: PROVIDER_PRESETS.openai.supports },
-  { match: /claude/i, supports: PROVIDER_PRESETS.anthropic.supports },
+  { match: /claude/i, supports: PROVIDER_PRESETS.anthropic.supports }, 
   { match: /gemini/i, supports: PROVIDER_PRESETS.gemini.supports },
   { match: /qwen|qwq|dashscope/i, supports: PROVIDER_PRESETS.qwen.supports },
   { match: /deepseek/i, supports: PROVIDER_PRESETS.deepseek.supports },
@@ -174,6 +184,7 @@ export function getModelCapability(config = {}) {
 export function providerConfigExamples() {
   return {
     openai: { provider: 'openai', model: 'gpt-4.1-mini', apiKeyEnv: 'OPENAI_API_KEY' },
+    'codex-cli': { provider: 'codex-cli', model: 'gpt-5.5', commandEnv: 'CODEX_BIN', auth: 'chatgpt-oauth' },
     gemini: { provider: 'gemini', model: 'gemini-2.5-flash', apiKeyEnv: 'GEMINI_API_KEY' },
     anthropic: { provider: 'anthropic', model: 'claude-sonnet-4-5', apiKeyEnv: 'ANTHROPIC_API_KEY' },
     qwen: { provider: 'qwen', model: 'qwen-plus', apiKeyEnv: 'DASHSCOPE_API_KEY' },

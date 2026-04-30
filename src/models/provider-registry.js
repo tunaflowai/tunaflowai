@@ -1,5 +1,6 @@
 import { MockProvider } from './mock-provider.js';
 import { OpenAICompatibleProvider } from './openai-compatible-provider.js';
+import { CodexCliProvider } from './codex-cli-provider.js';
 import { AnthropicProvider } from './providers/anthropic-provider.js';
 import { GeminiProvider } from './providers/gemini-provider.js';
 import { getProviderPreset, getModelCapability } from './model-catalog.js';
@@ -7,6 +8,9 @@ import { getProviderPreset, getModelCapability } from './model-catalog.js';
 const PROVIDERS = new Map();
 
 registerProvider('mock', (config) => new MockProvider(config));
+registerProvider('codex-cli', (config) => new CodexCliProvider(config));
+registerProvider('openai-codex', (config) => new CodexCliProvider(config));
+registerProvider('codex', (config) => new CodexCliProvider(config));
 registerProvider('openai-compatible', (config) => new OpenAICompatibleProvider(config));
 registerProvider('openai', (config) => new OpenAICompatibleProvider({ baseUrl: 'https://api.openai.com/v1', apiKeyEnv: 'OPENAI_API_KEY', ...config, provider: 'openai' }));
 registerProvider('openai-chat', (config) => new OpenAICompatibleProvider({ baseUrl: 'https://api.openai.com/v1', apiKeyEnv: 'OPENAI_API_KEY', ...config, provider: 'openai-chat' }));
