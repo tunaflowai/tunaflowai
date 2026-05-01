@@ -30,7 +30,7 @@ export function createGateway({ runtime, eventStore, stateEngine, auditLog, mode
       const dashboardPath = url.pathname === '/' || url.pathname === '/dashboard' || url.pathname === '/dashboard/';
       if (req.method === 'GET' && dashboardPath) {
         if (authManager?.enabled?.() && !authManager.verifyCookie(req.headers.cookie || '') && !isBearerAuthorized(req, apiToken)) {
-          return sendHtml(res, 200, renderLoginHtml(authManager.status()));
+          return sendHtml(res, 401, renderLoginHtml(authManager.status()));
         }
         return sendHtml(res, 200, renderDashboardHtml());
       }
