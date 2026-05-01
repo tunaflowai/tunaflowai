@@ -1,0 +1,27 @@
+{
+  "models": [
+    {
+      "name": "gemini-flash",
+      "provider": "gemini",
+      "model": "gemini-2.0-flash",
+      "enabled": true
+    }
+  ],
+  "chains": {
+    "default": ["gemini-flash"]
+  },
+  "tokenBudget": {
+    "maxInputTokens": 8000,
+    "maxOutputTokens": 1200,
+    "maxModelCallsPerEvent": 3
+  },
+  "runtime": {
+    "maxActionsPerRun": 8,
+    "workspace": "."
+  },
+  "dataDir": ".tunaflow-data-test",
+  "server": {
+    "host": "127.0.0.1",
+    "port": 8787
+  }
+}
