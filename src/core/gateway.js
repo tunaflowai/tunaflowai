@@ -153,11 +153,39 @@ export function createGateway({ runtime, eventStore, stateEngine, auditLog, mode
     }
   });
 
-  return { server, async listen() { await new Promise((resolve) => server.listen(port, host, resolve)); return { host, port }; }, async close() { await new Promise((resolve, reject) => server.close((err) => (err ? reject(err) : resolve()))); } };
+  return {
+    server,
+    async listen() {
+      let attempt = port;
+      const maxAttempts = 10;
+      for (let i = 0; i < maxAttempts; i++) {
+        try {
+          await new Promise((resolve, reject) => {
+            const onError = (err) => { server.removeListener('listening', onListening); reject(err); };
+            const onListening = () => { server.removeListener('error', onError); resolve(); };
+            server.once('error', onError);
+            server.once('listening', onListening);
+            server.listen(attempt, host);
+          });
+          return { host, port: attempt };
+        } catch (err) {
+          if (err.code !== 'EADDRINUSE' || i === maxAttempts - 1) throw err;
+          console.warn(`Port ${attempt} in use, trying ${attempt + 1}...`);
+          attempt += 1;
+        }
+      }
+      throw new Error(`Could not bind to any port in range ${port}–${port + maxAttempts - 1}`);
+    },
+    async close() { await new Promise((resolve, reject) => server.close((err) => (err ? reject(err) : resolve()))); }
+  };
 }
 
 function isPublicEndpoint(method, pathname) { return method === 'GET' && (pathname === '/health' || pathname === '/login' || pathname === '/auth/status' || pathname === '/' || pathname === '/dashboard' || pathname === '/dashboard/'); }
-function isAuthorized(req, apiToken, authManager) { return isBearerAuthorized(req, apiToken) || Boolean(authManager?.verifyCookie?.(req.headers.cookie || '')); }
+function isAuthorized(req, apiToken, authManager) {
+  if (isBearerAuthorized(req, apiToken)) return true;
+  if (authManager?.enabled?.() && authManager.verifyCookie(req.headers.cookie || '')) return true;
+  return false;
+}
 function isBearerAuthorized(req, token) { const auth = req.headers.authorization || ''; return Boolean(token && auth === `Bearer ${token}`); }
 function setCors(res, origin) { res.setHeader('access-control-allow-origin', origin); res.setHeader('access-control-allow-methods', 'GET,POST,DELETE,OPTIONS'); res.setHeader('access-control-allow-headers', 'content-type,authorization,x-slack-signature,x-slack-request-timestamp,x-telegram-bot-api-secret-token,x-hub-signature-256,x-signature-ed25519,x-signature-timestamp,x-tunaflow-signature'); }
 async function readRawBody(req, limitBytes) { const chunks = []; let size = 0; for await (const chunk of req) { size += chunk.length; if (size > limitBytes) throw new Error(`Request body exceeds limit of ${limitBytes} bytes`); chunks.push(chunk); } return Buffer.concat(chunks).toString('utf8'); }

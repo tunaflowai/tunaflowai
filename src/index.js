@@ -158,7 +158,8 @@ export async function startGateway(config = null) {
     port: app.config.server.port,
     config: app.config
   });
-  await gateway.listen();
+  const bound = await gateway.listen();
+  app.config.server.port = bound.port;
   if (app.config.channels?.autoStart !== false) {
     await app.channelRegistry.startAll({ emit: (event) => app.runtime.handleEvent(event) });
   }
