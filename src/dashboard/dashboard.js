@@ -1,5 +1,6 @@
-export function renderDashboardHtml({ authEnabled = false } = {}) {
+export function renderDashboardHtml({ authEnabled = false, apiToken = '' } = {}) {
   const authBadge = authEnabled ? 'Auth enabled' : 'Local token optional';
+  const escapedToken = String(apiToken || '').replace(/[<>"'&]/g, '');
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -193,7 +194,10 @@ input:checked+.slider:before{transform:translateX(20px)}
 (function(){
   var panels = ['overview','chat','models','persona','skills','approvals','operations','logs'];
   var labels = {overview:'Overview',chat:'Chat',models:'Models',persona:'Persona',skills:'Skills',approvals:'Approvals',operations:'Operations',logs:'Logs'};
-  var state = { token: localStorage.getItem('tunaflow.token') || '', catalog: null, models: null };
+  var injectedToken = ${JSON.stringify(escapedToken)};
+  var savedToken = localStorage.getItem('tunaflow.token') || '';
+  if (injectedToken && !savedToken) { localStorage.setItem('tunaflow.token', injectedToken); savedToken = injectedToken; }
+  var state = { token: savedToken, catalog: null, models: null };
 
   var PROV = [
     {id:'openai',      label:'OpenAI',         keyEnv:'OPENAI_API_KEY',      models:['gpt-4.1','gpt-4.1-mini','gpt-4.1-nano','gpt-4o','gpt-4o-mini','o4-mini','o3-mini']},

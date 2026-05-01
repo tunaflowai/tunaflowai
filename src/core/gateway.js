@@ -35,7 +35,7 @@ export function createGateway({ runtime, eventStore, stateEngine, auditLog, mode
         if (authManager?.enabled?.() && !authManager.verifyCookie(req.headers.cookie || '') && !isBearerAuthorized(req, apiToken)) {
           return sendHtml(res, 401, renderLoginHtml(authManager.status()));
         }
-        return sendHtml(res, 200, renderDashboardHtml());
+        return sendHtml(res, 200, renderDashboardHtml({ authEnabled: authManager?.enabled?.() || false, apiToken }));
       }
 
       if (apiToken || authManager?.enabled?.()) {
