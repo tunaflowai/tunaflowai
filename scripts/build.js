@@ -1,9 +1,19 @@
 #!/usr/bin/env node
 // Bundles src/cli.js and all dependencies into a single dist/cli.js
 // Result: Node.js reads 1 file instead of 41 — dramatically faster on slow filesystems.
-import { build } from 'esbuild';
+import { createRequire } from 'node:module';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
+
+// esbuild is a devDependency — skip build gracefully if not installed
+let build;
+try {
+  ({ build } = await import('esbuild'));
+} catch {
+  console.log('esbuild not available — skipping bundle build (dist/cli.js will not be updated).');
+  console.log('Run `npm install` with devDependencies to build the bundle.\n');
+  process.exit(0);
+}
 
 mkdirSync('dist', { recursive: true });
 
