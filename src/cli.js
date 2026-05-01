@@ -3,7 +3,24 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
 
+await loadDotEnv();
+
 const command = process.argv[2] || 'help';
+
+async function loadDotEnv() {
+  try {
+    const content = await fs.readFile(path.resolve('.env'), 'utf8');
+    for (const line of content.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const idx = trimmed.indexOf('=');
+      if (idx === -1) continue;
+      const key = trimmed.slice(0, idx).trim();
+      const value = trimmed.slice(idx + 1).trim().replace(/^["']|["']$/g, '');
+      if (!(key in process.env)) process.env[key] = value;
+    }
+  } catch (_) { /* no .env file — ignore */ }
+}
 
 async function runtime() {
   const { createTunaFlowRuntime, loadConfig } = await import('./index.js');
