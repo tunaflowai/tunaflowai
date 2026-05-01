@@ -2,13 +2,26 @@
 // Start the TunaFlowAI server in the background and return control to the shell.
 import { spawn } from 'node:child_process';
 import { writeFileSync, readFileSync, existsSync, mkdirSync, openSync, closeSync, appendFileSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import path from 'node:path';
 
 const dataDir = '.tunaflow';
 const pidFile = path.join(dataDir, 'server.pid');
 const logFile = path.join(dataDir, 'server.log');
+const envFile = '.env';
 
 mkdirSync(dataDir, { recursive: true });
+
+// Auto-generate API token on first run so the dashboard works out of the box
+let envContent = '';
+try { envContent = readFileSync(envFile, 'utf8'); } catch {}
+if (!/^TUNAFLOW_API_TOKEN=.+$/m.test(envContent)) {
+  const token = randomBytes(32).toString('hex');
+  const line = `TUNAFLOW_API_TOKEN=${token}`;
+  envContent = envContent ? envContent.trimEnd() + '\n' + line + '\n' : line + '\n';
+  writeFileSync(envFile, envContent, 'utf8');
+  console.log('Generated new API token in .env');
+}
 
 if (existsSync(pidFile)) {
   try {
