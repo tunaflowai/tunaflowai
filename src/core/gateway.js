@@ -35,6 +35,9 @@ export function createGateway({ runtime, eventStore, stateEngine, auditLog, mode
         if (authManager?.enabled?.() && !authManager.verifyCookie(req.headers.cookie || '') && !isBearerAuthorized(req, apiToken)) {
           return sendHtml(res, 401, renderLoginHtml(authManager.status()));
         }
+        if (apiToken) {
+          res.setHeader('Set-Cookie', `tunaflow_session=${apiToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${24 * 60 * 60}`);
+        }
         return sendHtml(res, 200, renderDashboardHtml({ authEnabled: authManager?.enabled?.() || false, apiToken }));
       }
 
@@ -183,10 +186,21 @@ export function createGateway({ runtime, eventStore, stateEngine, auditLog, mode
 function isPublicEndpoint(method, pathname) { return method === 'GET' && (pathname === '/health' || pathname === '/login' || pathname === '/auth/status' || pathname === '/' || pathname === '/dashboard' || pathname === '/dashboard/'); }
 function isAuthorized(req, apiToken, authManager) {
   if (isBearerAuthorized(req, apiToken)) return true;
+  if (isSessionCookieAuthorized(req, apiToken)) return true;
   if (authManager?.enabled?.() && authManager.verifyCookie(req.headers.cookie || '')) return true;
   return false;
 }
 function isBearerAuthorized(req, token) { const auth = req.headers.authorization || ''; return Boolean(token && auth === `Bearer ${token}`); }
+function isSessionCookieAuthorized(req, token) {
+  if (!token) return false;
+  const header = req.headers.cookie || '';
+  for (const part of header.split(';')) {
+    const idx = part.indexOf('=');
+    if (idx === -1) continue;
+    if (part.slice(0, idx).trim() === 'tunaflow_session' && part.slice(idx + 1).trim() === token) return true;
+  }
+  return false;
+}
 function setCors(res, origin) { res.setHeader('access-control-allow-origin', origin); res.setHeader('access-control-allow-methods', 'GET,POST,DELETE,OPTIONS'); res.setHeader('access-control-allow-headers', 'content-type,authorization,x-slack-signature,x-slack-request-timestamp,x-telegram-bot-api-secret-token,x-hub-signature-256,x-signature-ed25519,x-signature-timestamp,x-tunaflow-signature'); }
 async function readRawBody(req, limitBytes) { const chunks = []; let size = 0; for await (const chunk of req) { size += chunk.length; if (size > limitBytes) throw new Error(`Request body exceeds limit of ${limitBytes} bytes`); chunks.push(chunk); } return Buffer.concat(chunks).toString('utf8'); }
 async function readBody(req, limitBytes) { return parseJsonRaw(await readRawBody(req, limitBytes)); }
