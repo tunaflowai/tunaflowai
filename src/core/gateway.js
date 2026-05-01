@@ -1,6 +1,9 @@
 import http from 'node:http';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import { limitNumber } from './utils.js';
 import { renderDashboardHtml } from '../dashboard/dashboard.js';
+import { getProviderPreset } from '../models/model-catalog.js';
 
 export function createGateway({ runtime, eventStore, stateEngine, auditLog, modelRouter, toolRegistry, permissionEngine, personaManager = null, identityManager = null, skillLoader = null, channelRegistry = null, authManager = null, secretVault = null, policyEngine = null, taskManager = null, host = '127.0.0.1', port = 8787, config = {} }) {
   const serverConfig = config.server || {};
@@ -115,6 +118,32 @@ export function createGateway({ runtime, eventStore, stateEngine, auditLog, mode
         const event = channel.normalizeInbound ? channel.normalizeInbound(body) : { type: 'channel.message', channel: channelId, payload: body };
         const result = await runtime.handleEvent(event);
         return sendJson(res, 200, result);
+      }
+
+      if (req.method === 'POST' && url.pathname === '/models/configure') {
+        const body = await readBody(req, bodyLimitBytes);
+        const { provider, model, apiKey, enabled = true, name } = body;
+        if (!provider) return sendJson(res, 400, { error: 'provider is required' });
+        const preset = getProviderPreset(provider);
+        if (apiKey && preset.apiKeyEnv) process.env[preset.apiKeyEnv] = String(apiKey);
+        const modelName = String(name || provider);
+        const enriched = modelRouter.addOrUpdateProvider({ name: modelName, provider, model: model || undefined, enabled });
+        const dataDir = config.runtime?.dataDir || path.join(process.cwd(), '.tunaflow');
+        await fs.mkdir(dataDir, { recursive: true });
+        const cfgFile = path.join(dataDir, 'model-config.json');
+        let saved = []; try { saved = JSON.parse(await fs.readFile(cfgFile, 'utf8')); } catch (_e) { saved = []; }
+        const idx = saved.findIndex((c) => c.name === modelName);
+        const entry = { name: modelName, provider, model, enabled, ...(preset.apiKeyEnv ? { apiKeyEnv: preset.apiKeyEnv } : {}) };
+        if (idx >= 0) saved[idx] = entry; else saved.push(entry);
+        await fs.writeFile(cfgFile, JSON.stringify(saved, null, 2));
+        return sendJson(res, 200, { ok: true, model: enriched.name, provider, enabled });
+      }
+
+      const modelToggleMatch = url.pathname.match(/^\/models\/([^/]+)\/toggle$/);
+      if (req.method === 'POST' && modelToggleMatch) {
+        const body = await readBody(req, bodyLimitBytes);
+        const modelName = decodeURIComponent(modelToggleMatch[1]);
+        return sendJson(res, 200, { ok: true, ...modelRouter.setModelEnabled(modelName, body.enabled !== false) });
       }
 
       return sendJson(res, 404, { error: 'Not found' });
