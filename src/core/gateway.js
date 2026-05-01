@@ -207,7 +207,7 @@ async function readBody(req, limitBytes) { return parseJsonRaw(await readRawBody
 function parseJsonRaw(raw) { if (!raw) return {}; return JSON.parse(raw); }
 function sendJson(res, status, body) { res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' }); res.end(status === 204 ? '' : JSON.stringify(body, null, 2)); }
 function sendText(res, status, text) { res.writeHead(status, { 'content-type': 'text/plain; charset=utf-8' }); res.end(text); }
-function sendHtml(res, status, html) { res.writeHead(status, { 'content-type': 'text/html; charset=utf-8' }); res.end(html); }
+function sendHtml(res, status, html) { res.writeHead(status, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store, no-cache, must-revalidate' }); res.end(html); }
 
 async function overview({ modelRouter, stateEngine, eventStore, auditLog, toolRegistry, skillLoader, personaManager, identityManager, channelRegistry, permissionEngine, taskManager }) {
   const limit = 25;
