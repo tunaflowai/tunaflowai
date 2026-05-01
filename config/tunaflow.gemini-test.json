@@ -3,7 +3,7 @@
     {
       "name": "gemini-flash",
       "provider": "gemini",
-      "model": "gemini-2.0-flash",
+      "model": "gemini-2.5-flash",
       "enabled": true
     }
   ],
@@ -11,13 +11,23 @@
     "default": ["gemini-flash"]
   },
   "tokenBudget": {
-    "maxInputTokens": 8000,
+    "maxInputTokens": 32000,
     "maxOutputTokens": 1200,
     "maxModelCallsPerEvent": 3
   },
   "runtime": {
     "maxActionsPerRun": 8,
-    "workspace": "."
+    "workspace": ".",
+    "dataDir": ".tunaflow-data-test"
+  },
+  "taskBudget": {
+    "defaultBudget": {
+      "maxModelCalls": 20,
+      "maxInputTokens": 200000,
+      "maxOutputTokens": 10000,
+      "maxToolCalls": 50,
+      "maxRuntimeMs": 300000
+    }
   },
   "dataDir": ".tunaflow-data-test",
   "server": {
