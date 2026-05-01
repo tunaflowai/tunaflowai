@@ -38,9 +38,9 @@ export class AuditLog {
       hash: sha256(entryBase)
     };
     await appendJsonl(this.file, entry);
-    await this.remote.send(entry);
     this.sequence = entry.sequence;
     this.lastHash = entry.hash;
+    await this.remote.send(entry);
     return entry;
   }
 

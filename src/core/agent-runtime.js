@@ -71,7 +71,13 @@ export class AgentRuntime {
       toolPolicy: this.config.permissions || {}
     });
 
-    const budgetCheck = this.taskBudgetManager?.canSpend?.(activeTaskId, { modelCalls: 1, inputTokens: context.approxTokens, outputTokens: this.config.tokenBudget?.maxOutputTokens || 1200 });
+    const messages = [
+      { role: 'system', content: systemPrompt(this.toolRegistry.list(), this.skillSelector?.buildPrompt(selectedSkills) || 'No selected skills.', activePersona, this.identityManager) },
+      { role: 'user', content: JSON.stringify(context, null, 2) }
+    ];
+
+    const messagesApproxTokens = approximateTokens(messages);
+    const budgetCheck = this.taskBudgetManager?.canSpend?.(activeTaskId, { modelCalls: 1, inputTokens: messagesApproxTokens, outputTokens: this.config.tokenBudget?.maxOutputTokens || 1200 });
     if (budgetCheck && !budgetCheck.allowed) {
       const run = { id: runId, eventId: event.id, status: 'budget_exhausted', reason: budgetCheck.reason, taskId: activeTaskId, createdAt: now() };
       await this.stateEngine.recordRun(run);
@@ -79,12 +85,7 @@ export class AgentRuntime {
       return { status: 'budget_exhausted', event, run };
     }
 
-    await this.auditLog.record('agent.context_built', { runId, approxTokens: context.approxTokens, eventId: event.id, taskId: activeTaskId, identity: identity?.displayName || identity?.name });
-
-    const messages = [
-      { role: 'system', content: systemPrompt(this.toolRegistry.list(), this.skillSelector?.buildPrompt(selectedSkills) || 'No selected skills.', activePersona, this.identityManager) },
-      { role: 'user', content: JSON.stringify(context, null, 2) }
-    ];
+    await this.auditLog.record('agent.context_built', { runId, approxTokens: messagesApproxTokens, eventId: event.id, taskId: activeTaskId, identity: identity?.displayName || identity?.name });
 
     let modelResult;
     try {

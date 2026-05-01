@@ -6,6 +6,7 @@ export class PermissionEngine {
   constructor({ dataDir, config = {}, auditLog = null, policyEngine = null }) {
     this.dataDir = dataDir;
     this.approvalsDir = path.join(dataDir, 'approvals');
+    this._decidingIds = new Set();
     this.config = {
       autoApproveMedium: normalizeBool(process.env.TUNAFLOW_AUTO_APPROVE_MEDIUM, config.autoApproveMedium || false),
       autoApproveHigh: normalizeBool(process.env.TUNAFLOW_AUTO_APPROVE_HIGH, config.autoApproveHigh || false),
@@ -88,6 +89,16 @@ export class PermissionEngine {
 
   async decide(id, decision, metadata = {}) {
     if (!['approved', 'rejected'].includes(decision)) throw new Error('Decision must be approved or rejected');
+    if (this._decidingIds.has(id)) throw new Error(`Approval ${id} is already being decided`);
+    this._decidingIds.add(id);
+    try {
+      return await this._doDecide(id, decision, metadata);
+    } finally {
+      this._decidingIds.delete(id);
+    }
+  }
+
+  async _doDecide(id, decision, metadata = {}) {
     const approval = await this.getApproval(id);
     if (!approval) throw new Error(`Approval not found: ${id}`);
     if (approval.status !== 'pending') throw new Error(`Approval is already ${approval.status}`);
