@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { createTunaFlowRuntime, loadConfig, startGateway } from './index.js';
 import { pathExists } from './core/utils.js';
 
@@ -65,6 +66,8 @@ try {
     console.log(JSON.stringify(app.policyEngine.list(), null, 2));
   } else if (command === 'tasks') {
     await handleTasks();
+  } else if (command === 'token') {
+    await handleToken();
   } else if (command === 'check' || command === 'doctor') {
     const app = await appRuntime();
     console.log(JSON.stringify({ ok: true, identity: app.identityManager.public(), tools: app.toolRegistry.list().length, skills: app.skillLoader.list().length, channels: app.channelRegistry.list().length, personas: app.personaManager.list().length, models: app.modelRouter.getHealth(), audit: await app.auditLog.verify(), secrets: await app.secretsVault.list(), policy: app.policyEngine.list() }, null, 2));
@@ -137,6 +140,34 @@ async function handleTasks() {
   throw new Error('tasks commands: list | create <title> | budget <taskId> key=value | budgets');
 }
 
+async function handleToken() {
+  const sub = process.argv[3] || 'generate';
+  if (sub !== 'generate') throw new Error('token commands: generate');
+
+  const token = crypto.randomBytes(32).toString('hex');
+  const envFile = path.resolve('.env');
+  const envKey = 'TUNAFLOW_API_TOKEN';
+
+  let content = '';
+  try { content = await fs.readFile(envFile, 'utf8'); } catch (_e) { /* file does not exist yet */ }
+
+  const line = `${envKey}=${token}`;
+  const pattern = new RegExp(`^${envKey}=.*$`, 'm');
+  if (pattern.test(content)) {
+    content = content.replace(pattern, line);
+  } else {
+    content = content ? `${content.trimEnd()}\n${line}\n` : `${line}\n`;
+  }
+
+  await fs.writeFile(envFile, content, 'utf8');
+
+  console.log(`\nToken generated and saved to .env\n`);
+  console.log(`  ${envKey}=${token}`);
+  console.log(`\nCopy the token above and paste it into the "Token Bearer"`);
+  console.log(`field in the TunaFlowAI dashboard sidebar.\n`);
+  console.log(`Restart the server for the token to take effect if it is already running.\n`);
+}
+
 function parseKeyValues(args, numbers = false) {
   const patch = {};
   for (const arg of args) {
@@ -183,6 +214,7 @@ function codespacesUrl(port) {
 function printHelp() {
   console.log(`TunaFlowAI commands:
 
+ tunaflow token generate                    Generate API token and save to .env
  tunaflow init                              Create config/tunaflow.config.json
  tunaflow dev                               Start local gateway + dashboard
  tunaflow chat <text>                       Emit a user.message event
