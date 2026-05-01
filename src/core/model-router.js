@@ -166,6 +166,35 @@ export class ModelRouter {
     throw error;
   }
 
+  setModelEnabled(name, enabled) {
+    const model = this.config.modelsByName.get(name);
+    if (!model) throw new Error(`Model not found: ${name}`);
+    model.enabled = Boolean(enabled);
+    return { name, enabled: model.enabled };
+  }
+
+  addOrUpdateProvider(providerConfig) {
+    const enriched = enrichModelConfig(providerConfig);
+    const existing = this.config.modelsByName.get(enriched.name);
+    if (existing) {
+      Object.assign(existing, enriched);
+      this.providers.set(enriched.name, createModelProvider(enriched));
+    } else {
+      this.config.models.push(enriched);
+      this.config.modelsByName.set(enriched.name, enriched);
+      this.providers.set(enriched.name, createModelProvider(enriched));
+      this.health.set(enriched.name, {
+        provider: enriched.provider, model: enriched.model || enriched.name,
+        capability: enriched.capability, failures: 0, successes: 0, totalAttempts: 0,
+        lastError: null, lastAttemptAt: null, nextRetryAt: 0, lastSuccessAt: null,
+        latencyMs: { last: null, average: null }, usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
+      });
+      const defaultChain = this.config.chains.default || [];
+      if (!defaultChain.includes(enriched.name)) this.config.chains.default = [...defaultChain, enriched.name];
+    }
+    return enriched;
+  }
+
   resolveChain(chain, requiredCapabilities = []) {
     const selected = this.config.chains[chain] || this.config.chains.default || [];
     const names = selected.length > 0 ? selected : this.config.models.map((model) => model.name);
