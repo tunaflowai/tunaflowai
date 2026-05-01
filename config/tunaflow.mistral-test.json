@@ -1,0 +1,27 @@
+{
+  "models": [
+    {
+      "name": "mistral-small",
+      "provider": "mistral",
+      "model": "mistral-small-latest",
+      "enabled": true
+    }
+  ],
+  "chains": {
+    "default": ["mistral-small"]
+  },
+  "tokenBudget": {
+    "maxInputTokens": 8000,
+    "maxOutputTokens": 1200,
+    "maxModelCallsPerEvent": 3
+  },
+  "runtime": {
+    "maxActionsPerRun": 8,
+    "workspace": "."
+  },
+  "dataDir": ".tunaflow-data-test",
+  "server": {
+    "host": "127.0.0.1",
+    "port": 8787
+  }
+}
