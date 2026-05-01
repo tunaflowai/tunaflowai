@@ -9,7 +9,7 @@ export function createGateway({ runtime, eventStore, stateEngine, auditLog, mode
   const serverConfig = config.server || {};
   const apiToken = serverConfig.apiToken || process.env[serverConfig.apiTokenEnv || 'TUNAFLOW_API_TOKEN'];
   const bodyLimitBytes = serverConfig.bodyLimitBytes || 1024 * 1024;
-  const corsOrigin = serverConfig.corsOrigin || 'http://127.0.0.1:8787';
+  const corsOrigin = serverConfig.corsOrigin || '*';
 
   const server = http.createServer(async (req, res) => {
     try {

@@ -195,9 +195,8 @@ input:checked+.slider:before{transform:translateX(20px)}
   var panels = ['overview','chat','models','persona','skills','approvals','operations','logs'];
   var labels = {overview:'Overview',chat:'Chat',models:'Models',persona:'Persona',skills:'Skills',approvals:'Approvals',operations:'Operations',logs:'Logs'};
   var injectedToken = ${JSON.stringify(escapedToken)};
-  var savedToken = localStorage.getItem('tunaflow.token') || '';
-  if (injectedToken && !savedToken) { localStorage.setItem('tunaflow.token', injectedToken); savedToken = injectedToken; }
-  var state = { token: savedToken, catalog: null, models: null };
+  if (injectedToken) { localStorage.setItem('tunaflow.token', injectedToken); }
+  var state = { token: localStorage.getItem('tunaflow.token') || '', catalog: null, models: null };
 
   var PROV = [
     {id:'openai',      label:'OpenAI',         keyEnv:'OPENAI_API_KEY',      models:['gpt-4.1','gpt-4.1-mini','gpt-4.1-nano','gpt-4o','gpt-4o-mini','o4-mini','o3-mini']},
@@ -222,7 +221,7 @@ input:checked+.slider:before{transform:translateX(20px)}
   function json(v){ try{return JSON.stringify(v,null,2);}catch(_e){return String(v);} }
   function toast(msg){ var el=$('toast'); el.textContent=msg; el.className='toast show'; setTimeout(function(){el.className='toast';},3600); }
   function headers(){ var h={'content-type':'application/json'}; if(state.token) h.authorization='Bearer '+state.token; return h; }
-  async function api(path,opts){ var res=await fetch(path,Object.assign({headers:headers()},opts||{})); var txt=await res.text(); var data; try{data=txt?JSON.parse(txt):null;}catch(_e){data=txt;} if(!res.ok) throw new Error((data&&data.error)||txt||('HTTP '+res.status)); return data; }
+  async function api(path,opts){ var ctrl=new AbortController(); var t=setTimeout(function(){ctrl.abort();},8000); try{ var res=await fetch(path,Object.assign({headers:headers(),signal:ctrl.signal},opts||{})); clearTimeout(t); var txt=await res.text(); var data; try{data=txt?JSON.parse(txt):null;}catch(_e){data=txt;} if(!res.ok) throw new Error((data&&data.error)||txt||('HTTP '+res.status)); return data; }catch(e){clearTimeout(t); throw e;} }
   function setPanel(name){ document.querySelectorAll('.panel').forEach(function(p){p.classList.toggle('active',p.dataset.panel===name);}); document.querySelectorAll('#nav button').forEach(function(b){b.classList.toggle('active',b.dataset.panel===name);}); localStorage.setItem('tunaflow.panel',name); }
   function initNav(){ $('nav').innerHTML=panels.map(function(n){return '<button data-panel="'+n+'">'+labels[n]+'</button>';}).join(''); document.querySelectorAll('#nav button').forEach(function(b){b.addEventListener('click',function(){setPanel(b.dataset.panel);});}); setPanel(localStorage.getItem('tunaflow.panel')||'overview'); }
   function renderList(id,rows,mapper){ var el=$(id); if(!el) return; var list=Array.isArray(rows)?rows:[]; if(!list.length){el.innerHTML='<div class="item muted">Nothing to show.</div>';return;} el.innerHTML=list.map(mapper).join(''); }
@@ -418,7 +417,7 @@ input:checked+.slider:before{transform:translateX(20px)}
       renderList('runsList',(data.runs&&data.runs.runs)||data.runs||[],function(r){return '<div class="item"><strong>'+esc(r.id||'run')+'</strong><div class="muted">'+esc(r.status||'')+'</div></div>';});
       renderList('eventsList',(data.events&&data.events.events)||data.events||[],function(e){return '<div class="item"><strong>'+esc(e.type||'event')+'</strong><div class="muted">'+esc(e.createdAt||e.timestamp||'')+'</div><div>'+esc(e.text||'')+'</div></div>';});
       renderList('auditList',(data.audit&&data.audit.entries)||data.audit||[],function(a){return '<div class="item"><strong>'+esc(a.type||a.action||'audit')+'</strong><div class="muted">'+esc(a.createdAt||a.timestamp||'')+'</div></div>';});
-    }catch(err){$('statusText').textContent='Offline';toast(err.message);}
+    }catch(err){$('statusText').textContent='Offline — '+err.message;}
   }
 
   async function sendChat(){ var text=$('chatText').value.trim(); if(!text){toast('Write a message first.');return;} var chain=$('chainSelect').value; var body={text:text,message:text}; if(chain) body.chain=chain; $('chatResult').textContent='Sending...'; try{var result=await api('/chat',{method:'POST',body:JSON.stringify(body)});var run=result.run||{};var out=[];if(run.status) out.push('Status: '+run.status);if(run.model&&run.model.model) out.push('Model: '+run.model.model);if(run.summary) out.push('\nSummary: '+run.summary);if(run.plan&&run.plan.length) out.push('\nPlan:\n'+run.plan.map(function(s,i){return '  '+(i+1)+'. '+s;}).join('\n'));if(run.error) out.push('\nError: '+run.error);if(!out.length) out.push(json(result));$('chatResult').textContent=out.join('\n');await refreshCore();}catch(err){$('chatResult').textContent=err.message;} }
