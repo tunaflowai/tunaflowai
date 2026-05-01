@@ -79,12 +79,17 @@ export class SkillTrustRegistry {
   }
 
   sign(hash) {
-    const key = process.env[this.keyEnv] || this.config.signingKey || 'tunaflow-local-skill-signing-key';
+    const key = process.env[this.keyEnv] || this.config.signingKey;
+    if (!key) throw new Error(`Skill signing key not configured. Set ${this.keyEnv} or config.signingKey before signing skills.`);
     return crypto.createHmac('sha256', key).update(hash).digest('hex');
   }
 
   verify(hash, signature) {
-    return timingSafeEqual(signature, this.sign(hash));
+    try {
+      return timingSafeEqual(signature, this.sign(hash));
+    } catch (_) {
+      return false;
+    }
   }
 }
 

@@ -24,7 +24,11 @@ export class AuthManager {
   }
 
   secret() {
-    return this.config.sessionSecret || process.env[this.config.sessionSecretEnv] || process.env.TUNAFLOW_API_TOKEN || 'tunaflow-dev-session-secret';
+    const configured = this.config.sessionSecret || process.env[this.config.sessionSecretEnv] || process.env.TUNAFLOW_API_TOKEN;
+    if (configured) return configured;
+    const pw = this.password();
+    if (pw) return crypto.createHmac('sha256', pw).update('tunaflow-session-key-v1').digest('hex');
+    return 'tunaflow-dev-session-secret';
   }
 
   status() {

@@ -403,7 +403,7 @@ function extractKeywordCandidates(text) {
   return String(text || '').toLowerCase().split(/[^a-z0-9]+/).filter((word) => word.length > 3 && !COMMON.has(word));
 }
 
-const COMMON = new Set(['this', 'that', 'with', 'from', 'your', 'have', 'will', 'about', 'untuk', 'yang', 'dan', 'atau', 'dari', 'dengan', 'kami', 'anda']);
+const COMMON = new Set(['this', 'that', 'with', 'from', 'your', 'have', 'will', 'about', 'they', 'them', 'their', 'been', 'were', 'when', 'what', 'which', 'into', 'more', 'also', 'some', 'such', 'than', 'then', 'these', 'those', 'each', 'just', 'over']);
 
 function rankKeywords(candidates, corpus) {
   const counts = new Map();
