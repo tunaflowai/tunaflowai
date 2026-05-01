@@ -171,7 +171,7 @@ input:checked+.slider:before{transform:translateX(20px)}
       </div>
       <div class="card">
         <h2>Active Persona</h2>
-        <div id="activePersonaInfo"><div class="muted">No active persona.</div></div>
+        <div class="value" id="active-persona">Loading...</div></div>
       </div>
     </div>
   </section>
