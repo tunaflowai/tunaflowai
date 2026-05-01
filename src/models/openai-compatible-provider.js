@@ -60,12 +60,13 @@ export class OpenAICompatibleProvider {
     const data = await response.json();
     const message = data.choices?.[0]?.message;
     const content = typeof message?.content === 'string' ? message.content : contentFromParts(message?.content);
-    if (!content) throw new Error(`Model ${this.config.name} returned no message content`);
+    const toolCalls = message?.tool_calls || [];
+    if (!content && !toolCalls.length) throw new Error(`Model ${this.config.name} returned no message content`);
 
     return {
       content,
       usage: normalizeUsage(data.usage, messages, content),
-      toolCalls: message?.tool_calls || [],
+      toolCalls,
       raw: data
     };
   }
